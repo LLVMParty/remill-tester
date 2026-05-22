@@ -102,6 +102,9 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/cmovz.txt` | `./build-release/remill-tester 3975WX/cmovz.txt --execute --stop-on-first-fail` | 56,568 passed |
 | `3975WX/lzcnt.txt` | `./build-release/remill-tester 3975WX/lzcnt.txt --execute --stop-on-first-fail` | 34,400 passed |
 | `3975WX/tzcnt.txt` | `./build-release/remill-tester 3975WX/tzcnt.txt --execute --stop-on-first-fail` | 34,104 passed |
+| `3975WX/blsi.txt` | `./build-release/remill-tester 3975WX/blsi.txt --execute --stop-on-first-fail` | 49,464 passed |
+| `3975WX/blsr.txt` | `./build-release/remill-tester 3975WX/blsr.txt --execute --stop-on-first-fail` | 47,976 passed |
+| `3975WX/blsmsk.txt` | `./build-release/remill-tester 3975WX/blsmsk.txt --execute --stop-on-first-fail` | 43,848 passed |
 | `3975WX/bextr.txt` | `./build-release/remill-tester 3975WX/bextr.txt --execute --stop-on-first-fail` | 647,608 passed |
 | `3975WX/rorx.txt` | `./build-release/remill-tester 3975WX/rorx.txt --execute --stop-on-first-fail` | 405,456 passed |
 | `3975WX/shlx.txt` | `./build-release/remill-tester 3975WX/shlx.txt --execute --stop-on-first-fail` | 746,440 passed |

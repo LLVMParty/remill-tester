@@ -24,7 +24,6 @@ These are not counted as semantic failures by the runner (`execution_failed=0`),
 | Area | Example command | Current result | Notes |
 |---|---|---|---|
 | Raw memory-oracle gaps | `./build-release/remill-tester 3975WX/xlat.txt --execute --stop-on-first-fail` | `0 passed, 0 failed, 16 skipped`; `memory_state_missing=16` | Raw `3975WX` rows do not serialize table memory contents. Needs normalized `mem[...]` input/output cells or generator changes. |
-| Remill lift unsupported: scalar BMI1 | `./build-release/remill-tester 3975WX/blsi.txt --execute --limit-states 20 --stop-on-first-fail` | `20 skipped`; `unsupported:remill_lift=20` | Also observed for `blsr` and `blsmsk`. |
 | Remill lift unsupported: packed double min/max | `./build-release/remill-tester 3975WX/maxpd.txt --execute --limit-states 20 --stop-on-first-fail` | `20 skipped`; `unsupported:remill_lift=20` | `maxps`/`minps` full files pass; packed-double variants need Remill lift support/triage. |
 | Remill lift unsupported: AES | `./build-release/remill-tester 3975WX/aesenc.txt --execute --limit-states 20 --stop-on-first-fail` | `20 skipped`; `unsupported:remill_lift=20` | Also observed for `aesdec`. |
 | x87/FPU state unsupported | `./build-release/remill-tester 3975WX/fadd.txt --execute --limit-states 5 --stop-on-first-fail` | skipped as `fpu_state_unsupported` | Requires x87 state bridge and safe JIT support before comparing. |
