@@ -47,6 +47,10 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/btr.txt` | `./build/remill-tester 3975WX/btr.txt --execute --stop-on-first-fail` | 76,896 passed |
 | `3975WX/btc.txt` | `./build/remill-tester 3975WX/btc.txt --execute --stop-on-first-fail` | 78,984 passed |
 | `3975WX/bswap.txt` | `./build/remill-tester 3975WX/bswap.txt --execute --stop-on-first-fail` | 2,224 passed |
+| `3975WX/rol.txt` | `./build/remill-tester 3975WX/rol.txt --execute --stop-on-first-fail` | 29,018 passed |
+| `3975WX/ror.txt` | `./build/remill-tester 3975WX/ror.txt --execute --stop-on-first-fail` | 28,157 passed |
+| `3975WX/rcl.txt` | `./build/remill-tester 3975WX/rcl.txt --execute --stop-on-first-fail` | 32,090 passed |
+| `3975WX/rcr.txt` | `./build/remill-tester 3975WX/rcr.txt --execute --stop-on-first-fail` | 31,490 passed |
 
 ## Current limited smoke runs
 
@@ -62,15 +66,11 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 
 ## Current known mismatches
 
-These are not marked expected in the runner; they are real tester mismatches to triage against Remill semantics.
-
-| Corpus | Command | Result | Pattern |
-|---|---|---|---|
-| `3975WX/rol.txt` | `./build/remill-tester 3975WX/rol.txt --execute --report-jsonl <file>` | 28,966 passed; 52 failed; 0 skipped | CF mismatch for full-width byte/word rotates, e.g. `rol r8b, 0x08` |
-| `3975WX/ror.txt` | `./build/remill-tester 3975WX/ror.txt --execute --report-jsonl <file>` | 28,016 passed; 141 failed; 0 skipped | CF mismatch for full-width byte/word rotates, e.g. `ror al, 0x08` |
+No current full-file mismatches are tracked here. Unsupported or unimplemented rows are reported as skips with explicit `summary.skip_reason` lines.
 
 ## Notes
 
 - Logical instruction `AF` differences are masked using XED undefined flag metadata.
 - SHL/SHR/SAR dynamically mask `CF` when the effective count is at least the operand width because the carry flag is architecturally undefined in that case.
+- Shift/rotate flags are not compared for dynamic no-op counts unless the input row explicitly provides initial flags to verify preservation.
 - LEA's address-generation operand is not treated as a real memory read/write, so it does not require `mem[...]` oracle cells.

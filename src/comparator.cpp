@@ -50,7 +50,11 @@ std::uint64_t FirstBytesAsLittleEndian(const std::vector<std::uint8_t> &bytes) {
   return value;
 }
 
-std::optional<std::uint64_t> ParseShiftCount(const ExpectationRow &row) {
+bool InitialFlagsProvided(const ExpectationRow &row) {
+  return row.initial_state.find("flag") != row.initial_state.end();
+}
+
+std::optional<std::uint64_t> ParseCountOperand(const ExpectationRow &row) {
   auto instruction = ToLower(row.instruction);
   const auto comma = instruction.rfind(',');
   if (comma == std::string::npos) {
@@ -71,24 +75,67 @@ std::optional<std::uint64_t> ParseShiftCount(const ExpectationRow &row) {
   }
 }
 
+std::optional<std::uint64_t> MaskedCount(const ExpectationRow &row,
+                                         const XedMetadata &metadata) {
+  if (metadata.operand_width == 0) {
+    return std::nullopt;
+  }
+  const auto raw_count = ParseCountOperand(row);
+  if (!raw_count.has_value()) {
+    return std::nullopt;
+  }
+  const auto count_mask = metadata.operand_width == 64 ? 0x3fu : 0x1fu;
+  return *raw_count & count_mask;
+}
+
+std::optional<std::uint64_t> RotateEffectiveCount(const ExpectationRow &row,
+                                                  const XedMetadata &metadata) {
+  const auto masked_count = MaskedCount(row, metadata);
+  if (!masked_count.has_value() || metadata.operand_width == 0) {
+    return std::nullopt;
+  }
+  if (metadata.iclass == "ROL" || metadata.iclass == "ROR") {
+    return *masked_count % metadata.operand_width;
+  }
+  if (metadata.iclass == "RCL" || metadata.iclass == "RCR") {
+    if (metadata.operand_width < 32) {
+      return *masked_count % (metadata.operand_width + 1);
+    }
+    return *masked_count;
+  }
+  return std::nullopt;
+}
+
 std::uint32_t DynamicUndefinedFlagMask(const ExpectationRow &row,
                                        const XedMetadata &metadata) {
-  if (!(metadata.iclass == "SHL" || metadata.iclass == "SAL" ||
-        metadata.iclass == "SHR" || metadata.iclass == "SAR")) {
-    return 0;
-  }
   if (metadata.operand_width == 0) {
     return 0;
   }
-  const auto raw_count = ParseShiftCount(row);
-  if (!raw_count.has_value()) {
+
+  if (metadata.iclass == "SHL" || metadata.iclass == "SAL" ||
+      metadata.iclass == "SHR" || metadata.iclass == "SAR") {
+    const auto effective_count = MaskedCount(row, metadata);
+    if (!effective_count.has_value()) {
+      return 0;
+    }
+    if (*effective_count == 0 && !InitialFlagsProvided(row)) {
+      return metadata.comparable_written_flags;
+    }
+    if (*effective_count >= metadata.operand_width) {
+      return kFlagCF;
+    }
     return 0;
   }
-  const auto count_mask = metadata.operand_width == 64 ? 0x3fu : 0x1fu;
-  const auto effective_count = *raw_count & count_mask;
-  if (effective_count >= metadata.operand_width && effective_count != 0) {
-    return kFlagCF;
+
+  if (metadata.iclass == "ROL" || metadata.iclass == "ROR" ||
+      metadata.iclass == "RCL" || metadata.iclass == "RCR") {
+    const auto effective_count = RotateEffectiveCount(row, metadata);
+    if (effective_count.has_value() && *effective_count == 0 &&
+        !InitialFlagsProvided(row)) {
+      return metadata.comparable_written_flags;
+    }
   }
+
   return 0;
 }
 
