@@ -45,3 +45,25 @@ if(WIN32)
     )
 endif()
 """
+
+[target.remill-tester]
+type = "executable"
+sources = [
+    "src/tester_main.cpp",
+    "src/x86tester_parser.cpp",
+    "src/x86tester_parser.hpp",
+    "src/xed_metadata.cpp",
+    "src/xed_metadata.hpp",
+    "src/flag_masks.cpp",
+    "src/flag_masks.hpp",
+    "src/expectation.hpp",
+]
+cmake-after = """
+target_compile_features(remill-tester PRIVATE cxx_std_17)
+target_include_directories(remill-tester PRIVATE
+    "${CMAKE_SOURCE_DIR}/dependencies/install/include"
+)
+target_link_libraries(remill-tester PRIVATE
+    "${CMAKE_SOURCE_DIR}/dependencies/install/lib/libxed.a"
+)
+"""

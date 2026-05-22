@@ -112,3 +112,35 @@ if(WIN32)
         COMMAND_EXPAND_LISTS
     )
 endif()
+
+# Target: remill-tester
+set(remill-tester_SOURCES
+	cmake.toml
+	"src/expectation.hpp"
+	"src/flag_masks.cpp"
+	"src/flag_masks.hpp"
+	"src/tester_main.cpp"
+	"src/x86tester_parser.cpp"
+	"src/x86tester_parser.hpp"
+	"src/xed_metadata.cpp"
+	"src/xed_metadata.hpp"
+)
+
+add_executable(remill-tester)
+
+target_sources(remill-tester PRIVATE ${remill-tester_SOURCES})
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${remill-tester_SOURCES})
+
+get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+if(NOT CMKR_VS_STARTUP_PROJECT)
+	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT remill-tester)
+endif()
+
+set(CMKR_TARGET remill-tester)
+target_compile_features(remill-tester PRIVATE cxx_std_17)
+target_include_directories(remill-tester PRIVATE
+    "${CMAKE_SOURCE_DIR}/dependencies/install/include"
+)
+target_link_libraries(remill-tester PRIVATE
+    "${CMAKE_SOURCE_DIR}/dependencies/install/lib/libxed.a"
+)
