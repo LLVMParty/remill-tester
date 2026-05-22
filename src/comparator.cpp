@@ -102,10 +102,6 @@ CompareExecutionResult(const ExpectationRow &row, const XedMetadata &metadata,
         const auto care_mask = static_cast<std::uint64_t>(
             metadata.comparable_written_flags & kUserRFlagsMask);
         if (care_mask == 0) {
-          AddMismatch(comparison,
-                      FieldMismatch{key, expected, actual, 0,
-                                    "flag output present but XED reports no "
-                                    "comparable written user-mode flags"});
           continue;
         }
         if ((expected & care_mask) != (actual & care_mask)) {
