@@ -476,7 +476,8 @@ void PrintMetadataLine(const ExpectationRow &row, const XedMetadata &metadata) {
     return;
   }
 
-  std::cout << metadata.iclass << " category=" << metadata.category
+  std::cout << metadata.iclass << " iform=" << metadata.iform
+            << " category=" << metadata.category
             << " extension=" << metadata.extension << " len=" << metadata.length
             << " flags.read=" << FormatFlagNames(metadata.read_flags)
             << " flags.written=" << FormatFlagNames(metadata.written_flags)

@@ -21,6 +21,7 @@ struct XedMetadata {
   unsigned length = 0;
   unsigned operand_width = 0;
   std::string iclass;
+  std::string iform;
   std::string category;
   std::string extension;
   std::uint32_t read_flags = 0;
