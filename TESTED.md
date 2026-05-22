@@ -37,6 +37,9 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/minps.txt` | `./build/remill-tester 3975WX/minps.txt --execute --stop-on-first-fail` | 61,272 passed |
 | `3975WX/div.txt` | `./build/remill-tester 3975WX/div.txt --execute --stop-on-first-fail` | 7,292 passed, including expected exceptions |
 | `3975WX/idiv.txt` | `./build/remill-tester 3975WX/idiv.txt --execute --stop-on-first-fail` | 6,933 passed, including expected exceptions |
+| `3975WX/imul.txt` | `./build/remill-tester 3975WX/imul.txt --execute --stop-on-first-fail` | 998,329 passed |
+| `3975WX/mul.txt` | `./build/remill-tester 3975WX/mul.txt --execute --stop-on-first-fail` | 7,974 passed |
+| `3975WX/neg.txt` | `./build/remill-tester 3975WX/neg.txt --execute --stop-on-first-fail` | 3,240 passed |
 
 ## Current limited smoke runs
 
@@ -56,7 +59,6 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/btr.txt` | `./build/remill-tester 3975WX/btr.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
 | `3975WX/btc.txt` | `./build/remill-tester 3975WX/btc.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
 | `3975WX/xchg.txt` | `./build/remill-tester 3975WX/xchg.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
-| `3975WX/imul.txt` | `./build/remill-tester 3975WX/imul.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
 
 ## Current known mismatches
 
