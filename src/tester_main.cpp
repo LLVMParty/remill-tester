@@ -8,6 +8,7 @@
 #include "xed_metadata.hpp"
 
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <map>
 #include <set>
@@ -25,6 +26,8 @@ struct Options {
   std::set<std::string> opcodes;
   std::uint64_t limit_states = 0;
   std::uint64_t limit_instructions = 0;
+  std::filesystem::path report_jsonl;
+  std::filesystem::path report_skips_jsonl;
   bool print_instructions = false;
   bool execute = false;
   bool stop_on_first_fail = false;
@@ -80,6 +83,38 @@ std::string DecodeKey(const ExpectationRow &row) {
   return std::to_string(row.address) + "#" + row.opcode;
 }
 
+std::string JsonEscape(const std::string &text) {
+  std::ostringstream out;
+  for (const auto ch : text) {
+    switch (ch) {
+    case '"':
+      out << "\\\"";
+      break;
+    case '\\':
+      out << "\\\\";
+      break;
+    case '\n':
+      out << "\\n";
+      break;
+    case '\r':
+      out << "\\r";
+      break;
+    case '\t':
+      out << "\\t";
+      break;
+    default:
+      if (static_cast<unsigned char>(ch) < 0x20) {
+        out << "\\u00" << std::hex << std::uppercase
+            << static_cast<unsigned>(static_cast<unsigned char>(ch))
+            << std::dec;
+      } else {
+        out << ch;
+      }
+    }
+  }
+  return out.str();
+}
+
 std::string InstructionGroupKey(const std::filesystem::path &path,
                                 const ExpectationRow &row) {
   return path.string() + "#" + std::to_string(row.instruction_id);
@@ -111,6 +146,37 @@ std::string UnsupportedReason(const ExecutionResult &execution_result) {
   return "unsupported";
 }
 
+void WriteSkipJson(std::ostream *out, const std::filesystem::path &path,
+                   const ExpectationRow &row, const std::string &reason) {
+  if (out == nullptr) {
+    return;
+  }
+  *out << "{\"kind\":\"skip\",\"file\":\"" << JsonEscape(path.string())
+       << "\",\"test_case_id\":" << row.test_case_id
+       << ",\"instruction_id\":" << row.instruction_id
+       << ",\"state_index\":" << row.state_index << ",\"opcode\":\""
+       << JsonEscape(row.opcode) << "\",\"instruction\":\""
+       << JsonEscape(row.instruction) << "\",\"reason\":\""
+       << JsonEscape(reason) << "\"}\n";
+}
+
+void WriteMismatchJson(std::ostream *out, const std::filesystem::path &path,
+                       const ExpectationRow &row,
+                       const FieldMismatch &mismatch) {
+  if (out == nullptr) {
+    return;
+  }
+  *out << "{\"kind\":\"mismatch\",\"file\":\"" << JsonEscape(path.string())
+       << "\",\"test_case_id\":" << row.test_case_id
+       << ",\"instruction_id\":" << row.instruction_id
+       << ",\"state_index\":" << row.state_index << ",\"opcode\":\""
+       << JsonEscape(row.opcode) << "\",\"instruction\":\""
+       << JsonEscape(row.instruction) << "\",\"field\":\""
+       << JsonEscape(mismatch.field) << "\",\"expected\":" << mismatch.expected
+       << ",\"actual\":" << mismatch.actual << ",\"mask\":" << mismatch.mask
+       << ",\"detail\":\"" << JsonEscape(mismatch.detail) << "\"}\n";
+}
+
 void PrintUsage(const char *argv0) {
   std::cout
       << "Usage: " << argv0 << " [options] --input 3975WX/xor.txt\n\n"
@@ -124,6 +190,9 @@ void PrintUsage(const char *argv0) {
          "groups.\n"
       << "  --print-instructions       Print one XED metadata line per "
          "selected opcode/address.\n"
+      << "  --report-jsonl <path>      Write mismatch records as JSON Lines.\n"
+      << "  --report-skips-jsonl <path>\n"
+         "                              Write skip records as JSON Lines.\n"
       << "  --execute                  Lift/JIT/run selected rows with Remill "
          "and compare sparse outputs.\n"
       << "  --stop-on-first-fail       Stop after the first execution "
@@ -162,6 +231,10 @@ Options ParseOptions(int argc, char **argv) {
     } else if (arg == "--limit-instructions") {
       options.limit_instructions =
           std::stoull(require_value("--limit-instructions"));
+    } else if (arg == "--report-jsonl") {
+      options.report_jsonl = require_value("--report-jsonl");
+    } else if (arg == "--report-skips-jsonl") {
+      options.report_skips_jsonl = require_value("--report-skips-jsonl");
     } else if (arg == "--print-instructions") {
       options.print_instructions = true;
     } else if (arg == "--execute") {
@@ -354,6 +427,27 @@ int Run(const Options &options) {
     return 2;
   }
 
+  std::ofstream mismatch_report_file;
+  std::ofstream skip_report_file;
+  std::ostream *mismatch_report = nullptr;
+  std::ostream *skip_report = nullptr;
+  if (!options.report_jsonl.empty()) {
+    mismatch_report_file.open(options.report_jsonl);
+    if (!mismatch_report_file) {
+      throw std::runtime_error("failed to open mismatch report: " +
+                               options.report_jsonl.string());
+    }
+    mismatch_report = &mismatch_report_file;
+  }
+  if (!options.report_skips_jsonl.empty()) {
+    skip_report_file.open(options.report_skips_jsonl);
+    if (!skip_report_file) {
+      throw std::runtime_error("failed to open skip report: " +
+                               options.report_skips_jsonl.string());
+    }
+    skip_report = &skip_report_file;
+  }
+
   X86TesterParser parser;
   XedDecoder decoder;
   RemillBackend remill_backend;
@@ -435,19 +529,27 @@ int Run(const Options &options) {
 
       if (options.execute) {
         if (!metadata.ok) {
-          RecordSkip(summary, "xed_decode_failed");
+          const std::string reason = "xed_decode_failed";
+          RecordSkip(summary, reason);
+          WriteSkipJson(skip_report, path, row, reason);
           continue;
         }
         if (metadata.length != ParseHexBytes(row.opcode).size()) {
-          RecordSkip(summary, "xed_length_mismatch");
+          const std::string reason = "xed_length_mismatch";
+          RecordSkip(summary, reason);
+          WriteSkipJson(skip_report, path, row, reason);
           continue;
         }
         if (row.expected_exception_kind.has_value()) {
-          RecordSkip(summary, "expected_exception_unsupported");
+          const std::string reason = "expected_exception_unsupported";
+          RecordSkip(summary, reason);
+          WriteSkipJson(skip_report, path, row, reason);
           continue;
         }
         if (memory_state_missing) {
-          RecordSkip(summary, "memory_state_missing");
+          const std::string reason = "memory_state_missing";
+          RecordSkip(summary, reason);
+          WriteSkipJson(skip_report, path, row, reason);
           continue;
         }
 
@@ -461,7 +563,9 @@ int Run(const Options &options) {
         const auto execution_result =
             remill_backend.RunCase(row, final_state_keys);
         if (execution_result.outcome_class == OutcomeClass::Unsupported) {
-          RecordSkip(summary, UnsupportedReason(execution_result));
+          const auto reason = UnsupportedReason(execution_result);
+          RecordSkip(summary, reason);
+          WriteSkipJson(skip_report, path, row, reason);
           continue;
         }
         const auto comparison =
@@ -472,6 +576,7 @@ int Run(const Options &options) {
           ++summary.execution_failed;
           for (const auto &mismatch : comparison.mismatches) {
             std::cerr << "mismatch: " << FormatMismatch(row, mismatch) << '\n';
+            WriteMismatchJson(mismatch_report, path, row, mismatch);
           }
           if (options.stop_on_first_fail) {
             stop = true;
