@@ -4,7 +4,7 @@ This file records concrete tester runs so failures can be distinguished from unt
 
 ## Current green full-file runs
 
-All commands below completed with `execution_failed=0` and `execution_skipped=0` unless noted.
+All commands below completed with `execution_failed=0` and `execution_skipped=0` unless noted. Large sweeps should use the Release build (`build-release`) when available; earlier entries using `build` are equivalent Debug-build evidence.
 
 | Corpus | Command | Result |
 |---|---|---|
@@ -47,6 +47,12 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/btr.txt` | `./build/remill-tester 3975WX/btr.txt --execute --stop-on-first-fail` | 76,896 passed |
 | `3975WX/btc.txt` | `./build/remill-tester 3975WX/btc.txt --execute --stop-on-first-fail` | 78,984 passed |
 | `3975WX/bswap.txt` | `./build/remill-tester 3975WX/bswap.txt --execute --stop-on-first-fail` | 2,224 passed |
+| `3975WX/mov.txt` | `./build/remill-tester 3975WX/mov.txt --execute --stop-on-first-fail` | 77,946 passed |
+| `3975WX/lea.txt` | `./build/remill-tester 3975WX/lea.txt --execute --stop-on-first-fail` | 1,171,188 passed |
+| `3975WX/xchg.txt` | `./build/remill-tester 3975WX/xchg.txt --execute --stop-on-first-fail` | 110,033 passed |
+| `3975WX/movzx.txt` | `./build-release/remill-tester 3975WX/movzx.txt --execute --stop-on-first-fail` | 75,022 passed |
+| `3975WX/movsx.txt` | `./build-release/remill-tester 3975WX/movsx.txt --execute --stop-on-first-fail` | 113,322 passed |
+| `3975WX/movsxd.txt` | `./build-release/remill-tester 3975WX/movsxd.txt --execute --stop-on-first-fail` | 54,256 passed |
 | `3975WX/rol.txt` | `./build/remill-tester 3975WX/rol.txt --execute --stop-on-first-fail` | 29,018 passed |
 | `3975WX/ror.txt` | `./build/remill-tester 3975WX/ror.txt --execute --stop-on-first-fail` | 28,157 passed |
 | `3975WX/rcl.txt` | `./build/remill-tester 3975WX/rcl.txt --execute --stop-on-first-fail` | 32,090 passed |
@@ -56,13 +62,10 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 
 | Corpus | Command | Result |
 |---|---|---|
-| `3975WX/lea.txt` | `./build/remill-tester 3975WX/lea.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
-| `3975WX/mov.txt` | `./build/remill-tester 3975WX/mov.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
 | `3975WX/cmovz.txt` | `./build/remill-tester 3975WX/cmovz.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
 | `3975WX/cmovnz.txt` | `./build/remill-tester 3975WX/cmovnz.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
 | `3975WX/setz.txt` | `./build/remill-tester 3975WX/setz.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
 | `3975WX/setnz.txt` | `./build/remill-tester 3975WX/setnz.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
-| `3975WX/xchg.txt` | `./build/remill-tester 3975WX/xchg.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
 
 ## Current known mismatches
 
