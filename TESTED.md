@@ -100,6 +100,13 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/cmovp.txt` | `./build-release/remill-tester 3975WX/cmovp.txt --execute --stop-on-first-fail` | 56,352 passed |
 | `3975WX/cmovs.txt` | `./build-release/remill-tester 3975WX/cmovs.txt --execute --stop-on-first-fail` | 56,704 passed |
 | `3975WX/cmovz.txt` | `./build-release/remill-tester 3975WX/cmovz.txt --execute --stop-on-first-fail` | 56,568 passed |
+| `3975WX/lzcnt.txt` | `./build-release/remill-tester 3975WX/lzcnt.txt --execute --stop-on-first-fail` | 34,400 passed |
+| `3975WX/tzcnt.txt` | `./build-release/remill-tester 3975WX/tzcnt.txt --execute --stop-on-first-fail` | 34,104 passed |
+| `3975WX/bextr.txt` | `./build-release/remill-tester 3975WX/bextr.txt --execute --stop-on-first-fail` | 647,608 passed |
+| `3975WX/rorx.txt` | `./build-release/remill-tester 3975WX/rorx.txt --execute --stop-on-first-fail` | 405,456 passed |
+| `3975WX/shlx.txt` | `./build-release/remill-tester 3975WX/shlx.txt --execute --stop-on-first-fail` | 746,440 passed |
+| `3975WX/sarx.txt` | `./build-release/remill-tester 3975WX/sarx.txt --execute --stop-on-first-fail` | 770,320 passed |
+| `3975WX/shrx.txt` | `./build-release/remill-tester 3975WX/shrx.txt --execute --stop-on-first-fail` | 738,888 passed |
 | `3975WX/rol.txt` | `./build/remill-tester 3975WX/rol.txt --execute --stop-on-first-fail` | 29,018 passed |
 | `3975WX/ror.txt` | `./build/remill-tester 3975WX/ror.txt --execute --stop-on-first-fail` | 28,157 passed |
 | `3975WX/rcl.txt` | `./build/remill-tester 3975WX/rcl.txt --execute --stop-on-first-fail` | 32,090 passed |
@@ -107,8 +114,7 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 
 ## Current limited smoke runs
 
-| Corpus | Command | Result |
-|---|---|---|
+No limited-only smoke runs are currently tracked; entries are promoted to the full-file table after full corpus execution.
 
 ## Current known mismatches
 
