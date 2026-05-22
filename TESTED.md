@@ -53,6 +53,21 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/movzx.txt` | `./build-release/remill-tester 3975WX/movzx.txt --execute --stop-on-first-fail` | 75,022 passed |
 | `3975WX/movsx.txt` | `./build-release/remill-tester 3975WX/movsx.txt --execute --stop-on-first-fail` | 113,322 passed |
 | `3975WX/movsxd.txt` | `./build-release/remill-tester 3975WX/movsxd.txt --execute --stop-on-first-fail` | 54,256 passed |
+| `3975WX/cbw.txt` | `./build-release/remill-tester 3975WX/cbw.txt --execute --stop-on-first-fail` | 27 passed |
+| `3975WX/cwde.txt` | `./build-release/remill-tester 3975WX/cwde.txt --execute --stop-on-first-fail` | 42 passed |
+| `3975WX/cdqe.txt` | `./build-release/remill-tester 3975WX/cdqe.txt --execute --stop-on-first-fail` | 87 passed |
+| `3975WX/cwd.txt` | `./build-release/remill-tester 3975WX/cwd.txt --execute --stop-on-first-fail` | 32 passed |
+| `3975WX/cdq.txt` | `./build-release/remill-tester 3975WX/cdq.txt --execute --stop-on-first-fail` | 63 passed |
+| `3975WX/cqo.txt` | `./build-release/remill-tester 3975WX/cqo.txt --execute --stop-on-first-fail` | 127 passed |
+| `3975WX/clc.txt` | `./build-release/remill-tester 3975WX/clc.txt --execute --stop-on-first-fail` | 1 passed |
+| `3975WX/stc.txt` | `./build-release/remill-tester 3975WX/stc.txt --execute --stop-on-first-fail` | 1 passed |
+| `3975WX/cmc.txt` | `./build-release/remill-tester 3975WX/cmc.txt --execute --stop-on-first-fail` | 2 passed |
+| `3975WX/cld.txt` | `./build-release/remill-tester 3975WX/cld.txt --execute --stop-on-first-fail` | 1 passed |
+| `3975WX/std.txt` | `./build-release/remill-tester 3975WX/std.txt --execute --stop-on-first-fail` | 1 passed |
+| `3975WX/lahf.txt` | `./build-release/remill-tester 3975WX/lahf.txt --execute --stop-on-first-fail` | 13 passed |
+| `3975WX/sahf.txt` | `./build-release/remill-tester 3975WX/sahf.txt --execute --stop-on-first-fail` | 8 passed |
+| `3975WX/int.txt` | `./build-release/remill-tester 3975WX/int.txt --execute --stop-on-first-fail` | 32 passed, including expected exceptions |
+| `3975WX/int3.txt` | `./build-release/remill-tester 3975WX/int3.txt --execute --stop-on-first-fail` | 3 passed, including expected exceptions |
 | `3975WX/setb.txt` | `./build-release/remill-tester 3975WX/setb.txt --execute --stop-on-first-fail` | 128 passed |
 | `3975WX/setbe.txt` | `./build-release/remill-tester 3975WX/setbe.txt --execute --stop-on-first-fail` | 160 passed |
 | `3975WX/setl.txt` | `./build-release/remill-tester 3975WX/setl.txt --execute --stop-on-first-fail` | 180 passed |
@@ -97,7 +112,7 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 
 ## Current known mismatches
 
-No current full-file mismatches are tracked here. Unsupported or unimplemented rows are reported as skips with explicit `summary.skip_reason` lines.
+No current full-file mismatches are tracked here. Unsupported or unimplemented rows are reported as skips with explicit `summary.skip_reason` lines. `xlat.txt` currently skips all 16 rows as `memory_state_missing` because the raw corpus does not serialize the table memory contents.
 
 ## Notes
 
