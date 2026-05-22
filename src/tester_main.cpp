@@ -46,6 +46,7 @@ struct Summary {
   std::uint64_t execution_passed = 0;
   std::uint64_t execution_failed = 0;
   std::uint64_t execution_skipped = 0;
+  std::map<std::string, std::uint64_t> skip_reasons;
   std::map<std::string, std::uint64_t> rows_by_mnemonic;
   std::map<std::string, std::uint64_t> groups_by_mnemonic;
   std::map<std::string, std::uint64_t> undefined_flag_mentions;
@@ -91,6 +92,23 @@ bool RequiresMemoryOracle(const XedMetadata &metadata) {
     }
   }
   return false;
+}
+
+void RecordSkip(Summary &summary, const std::string &reason) {
+  ++summary.execution_skipped;
+  ++summary.skip_reasons[reason];
+}
+
+std::string UnsupportedReason(const ExecutionResult &execution_result) {
+  if (execution_result.backend_error.has_value() &&
+      !execution_result.backend_error->empty()) {
+    return "unsupported:" + *execution_result.backend_error;
+  }
+  if (execution_result.exception_detail.has_value() &&
+      !execution_result.exception_detail->empty()) {
+    return "unsupported:" + *execution_result.exception_detail;
+  }
+  return "unsupported";
 }
 
 void PrintUsage(const char *argv0) {
@@ -416,17 +434,20 @@ int Run(const Options &options) {
       }
 
       if (options.execute) {
-        if (!metadata.ok ||
-            metadata.length != ParseHexBytes(row.opcode).size()) {
-          ++summary.execution_skipped;
+        if (!metadata.ok) {
+          RecordSkip(summary, "xed_decode_failed");
+          continue;
+        }
+        if (metadata.length != ParseHexBytes(row.opcode).size()) {
+          RecordSkip(summary, "xed_length_mismatch");
           continue;
         }
         if (row.expected_exception_kind.has_value()) {
-          ++summary.execution_skipped;
+          RecordSkip(summary, "expected_exception_unsupported");
           continue;
         }
         if (memory_state_missing) {
-          ++summary.execution_skipped;
+          RecordSkip(summary, "memory_state_missing");
           continue;
         }
 
@@ -439,6 +460,10 @@ int Run(const Options &options) {
 
         const auto execution_result =
             remill_backend.RunCase(row, final_state_keys);
+        if (execution_result.outcome_class == OutcomeClass::Unsupported) {
+          RecordSkip(summary, UnsupportedReason(execution_result));
+          continue;
+        }
         const auto comparison =
             CompareExecutionResult(row, metadata, execution_result);
         if (comparison.passed) {
@@ -479,6 +504,13 @@ int Run(const Options &options) {
               << '\n';
     std::cout << "summary.execution_skipped=" << summary.execution_skipped
               << '\n';
+    if (!summary.skip_reasons.empty()) {
+      std::cout << "summary.skip_reasons:";
+      for (const auto &[reason, count] : summary.skip_reasons) {
+        std::cout << ' ' << reason << '=' << count;
+      }
+      std::cout << '\n';
+    }
   }
 
   if (!summary.rows_by_mnemonic.empty()) {
