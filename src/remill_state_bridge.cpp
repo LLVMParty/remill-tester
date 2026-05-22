@@ -3,10 +3,48 @@
 #include "flag_masks.hpp"
 #include "x86tester_parser.hpp"
 
+#include <charconv>
 #include <cstring>
 #include <set>
 
 namespace remill_tester {
+namespace {
+
+struct ByteRegisterInfo {
+  std::size_t index = 0;
+  std::size_t size = 0;
+};
+
+std::optional<ByteRegisterInfo>
+ParseByteRegisterName(const std::string &raw_name) {
+  const auto name = ToLower(raw_name);
+  const struct {
+    const char *prefix;
+    std::size_t size;
+  } prefixes[] = {{"xmm", 16}, {"ymm", 32}, {"zmm", 64}};
+
+  for (const auto &prefix : prefixes) {
+    const std::string prefix_text = prefix.prefix;
+    if (name.rfind(prefix_text, 0) != 0) {
+      continue;
+    }
+    const auto index_text = name.substr(prefix_text.size());
+    if (index_text.empty()) {
+      return std::nullopt;
+    }
+    std::size_t index = 0;
+    const auto *begin = index_text.data();
+    const auto *end = index_text.data() + index_text.size();
+    const auto [ptr, ec] = std::from_chars(begin, end, index, 10);
+    if (ec != std::errc{} || ptr != end || index >= kNumVecRegisters) {
+      return std::nullopt;
+    }
+    return ByteRegisterInfo{index, prefix.size};
+  }
+  return std::nullopt;
+}
+
+} // namespace
 
 const std::vector<std::string> &ScalarRegisterNames() {
   static const std::vector<std::string> names = {
@@ -87,6 +125,31 @@ std::optional<std::uint64_t> GetScalarRegister(const State &state,
   return std::nullopt;
 }
 
+bool IsByteRegister(const std::string &name) {
+  return ParseByteRegisterName(name).has_value();
+}
+
+bool SetByteRegister(State &state, const std::string &name,
+                     const std::vector<std::uint8_t> &bytes) {
+  const auto info = ParseByteRegisterName(name);
+  if (!info.has_value() || bytes.size() != info->size) {
+    return false;
+  }
+  std::memcpy(&state.vec[info->index], bytes.data(), bytes.size());
+  return true;
+}
+
+std::optional<std::vector<std::uint8_t>>
+GetByteRegister(const State &state, const std::string &name) {
+  const auto info = ParseByteRegisterName(name);
+  if (!info.has_value()) {
+    return std::nullopt;
+  }
+  std::vector<std::uint8_t> bytes(info->size);
+  std::memcpy(bytes.data(), &state.vec[info->index], bytes.size());
+  return bytes;
+}
+
 void SetFlags(State &state, std::uint64_t flags) {
   state.rflag.flat = flags | 0x2u;
 
@@ -122,6 +185,7 @@ std::uint64_t GetFlags(const State &state) {
 
 bool ApplyInitialState(
     State &state, const std::map<std::string, std::uint64_t> &initial_state,
+    const std::map<std::string, std::vector<std::uint8_t>> &initial_bytes,
     std::string *error) {
   for (const auto &[raw_key, value] : initial_state) {
     const auto key = CanonicalStateKey(raw_key);
@@ -131,6 +195,26 @@ bool ApplyInitialState(
       SetScalarRegister(state, key, value);
     } else if (error != nullptr) {
       *error = "unsupported scalar state key: " + key;
+      return false;
+    } else {
+      return false;
+    }
+  }
+
+  for (const auto &[raw_key, bytes] : initial_bytes) {
+    const auto key = CanonicalStateKey(raw_key);
+    if (key == "flag" || IsScalarRegister(key)) {
+      continue;
+    }
+    if (IsByteRegister(key)) {
+      if (!SetByteRegister(state, key, bytes)) {
+        if (error != nullptr) {
+          *error = "invalid byte state for register: " + key;
+        }
+        return false;
+      }
+    } else if (error != nullptr) {
+      *error = "unsupported byte state key: " + key;
       return false;
     } else {
       return false;
@@ -148,6 +232,18 @@ SnapshotState(const State &state, const std::vector<std::string> &keys) {
       snapshot[key] = GetFlags(state);
     } else if (const auto value = GetScalarRegister(state, key)) {
       snapshot[key] = *value;
+    }
+  }
+  return snapshot;
+}
+
+std::map<std::string, std::vector<std::uint8_t>>
+SnapshotBytes(const State &state, const std::vector<std::string> &keys) {
+  std::map<std::string, std::vector<std::uint8_t>> snapshot;
+  for (const auto &raw_key : keys) {
+    const auto key = CanonicalStateKey(raw_key);
+    if (const auto bytes = GetByteRegister(state, key)) {
+      snapshot[key] = *bytes;
     }
   }
   return snapshot;

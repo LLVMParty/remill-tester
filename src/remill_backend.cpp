@@ -140,7 +140,7 @@ RemillBackend::RunCase(const ExpectationRow &row,
 
   State state;
   ResetState(state);
-  if (!ApplyInitialState(state, row.initial_state, &error)) {
+  if (!ApplyInitialState(state, row.initial_state, row.initial_bytes, &error)) {
     result.outcome_class = OutcomeClass::Unsupported;
     result.backend_error = error;
     return result;
@@ -199,6 +199,11 @@ RemillBackend::RunCase(const ExpectationRow &row,
 
   result.outcome_class = OutcomeClass::Normal;
   result.final_state = SnapshotState(state, final_state_keys);
+  std::vector<std::string> final_byte_keys;
+  for (const auto &[key, _] : row.expected_final_bytes) {
+    final_byte_keys.push_back(key);
+  }
+  result.final_bytes = SnapshotBytes(state, final_byte_keys);
   return result;
 }
 

@@ -1,6 +1,7 @@
 #include "comparator.hpp"
 
 #include "flag_masks.hpp"
+#include "remill_state_bridge.hpp"
 #include "x86tester_parser.hpp"
 
 #include <algorithm>
@@ -115,6 +116,30 @@ CompareExecutionResult(const ExpectationRow &row, const XedMetadata &metadata,
         AddMismatch(comparison, FieldMismatch{key, expected, actual, UINT64_MAX,
                                               "scalar mismatch"});
       }
+    }
+  }
+
+  for (const auto &[raw_key, expected_bytes] : row.expected_final_bytes) {
+    const auto key = CanonicalStateKey(raw_key);
+    if (!IsByteRegister(key)) {
+      continue;
+    }
+    const auto actual_it = execution_result.final_bytes.find(key);
+    if (actual_it == execution_result.final_bytes.end()) {
+      AddMismatch(comparison,
+                  FieldMismatch{key, FirstBytesAsLittleEndian(expected_bytes),
+                                0, 0, "actual byte state missing"});
+      continue;
+    }
+    if (actual_it->second != expected_bytes) {
+      std::ostringstream detail;
+      detail << "byte register mismatch expected=#"
+             << BytesToHex(expected_bytes) << " actual=#"
+             << BytesToHex(actual_it->second);
+      AddMismatch(comparison,
+                  FieldMismatch{key, FirstBytesAsLittleEndian(expected_bytes),
+                                FirstBytesAsLittleEndian(actual_it->second), 0,
+                                detail.str()});
     }
   }
 

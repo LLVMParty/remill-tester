@@ -340,12 +340,19 @@ void RunSelfTests() {
   std::map<std::string, std::uint64_t> initial_state = {
       {"rax", 0xAAAAAAAAAAAAAAAAull}, {"flag", kFlagCF | kFlagDF}};
   std::string apply_error;
-  Require(ApplyInitialState(state, initial_state, &apply_error),
+  Require(ApplyInitialState(state, initial_state, {}, &apply_error),
           "apply sparse initial state");
   const auto snapshot = SnapshotState(state, {"rax", "flag"});
   Require(snapshot.at("rax") == 0xAAAAAAAAAAAAAAAAull, "snapshot rax");
   Require((snapshot.at("flag") & (kFlagCF | kFlagDF)) == (kFlagCF | kFlagDF),
           "snapshot flags");
+
+  std::vector<std::uint8_t> xmm_value = {0, 1, 2,  3,  4,  5,  6,  7,
+                                         8, 9, 10, 11, 12, 13, 14, 15};
+  Require(SetByteRegister(state, "xmm5", xmm_value), "set xmm5 bytes");
+  Require(GetByteRegister(state, "xmm5") == xmm_value, "get xmm5 bytes");
+  const auto byte_snapshot = SnapshotBytes(state, {"xmm5"});
+  Require(byte_snapshot.at("xmm5") == xmm_value, "snapshot xmm5 bytes");
 
   ExpectationRow xor_row;
   xor_row.address = 0x4000001;
