@@ -75,6 +75,8 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/movzx.txt` | `./build-release/remill-tester 3975WX/movzx.txt --execute --stop-on-first-fail` | 75,022 passed |
 | `3975WX/movsx.txt` | `./build-release/remill-tester 3975WX/movsx.txt --execute --stop-on-first-fail` | 113,322 passed |
 | `3975WX/movsxd.txt` | `./build-release/remill-tester 3975WX/movsxd.txt --execute --stop-on-first-fail` | 54,256 passed |
+| `3975WX/movmskpd.txt` | `./build-release/remill-tester 3975WX/movmskpd.txt --execute --stop-on-first-fail` | 25,600 passed |
+| `3975WX/movmskps.txt` | `./build-release/remill-tester 3975WX/movmskps.txt --execute --stop-on-first-fail` | 26,368 passed |
 | `3975WX/cbw.txt` | `./build-release/remill-tester 3975WX/cbw.txt --execute --stop-on-first-fail` | 27 passed |
 | `3975WX/cwde.txt` | `./build-release/remill-tester 3975WX/cwde.txt --execute --stop-on-first-fail` | 42 passed |
 | `3975WX/cdqe.txt` | `./build-release/remill-tester 3975WX/cdqe.txt --execute --stop-on-first-fail` | 87 passed |
