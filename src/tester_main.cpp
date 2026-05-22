@@ -23,6 +23,7 @@ namespace {
 
 struct Options {
   std::vector<std::filesystem::path> inputs;
+  std::vector<std::filesystem::path> input_dirs;
   std::set<std::string> mnemonics;
   std::set<std::string> opcodes;
   std::uint64_t limit_states = 0;
@@ -190,9 +191,14 @@ void WriteMismatchJson(std::ostream *out, const std::filesystem::path &path,
 void AddInputDirectory(Options &options, const std::filesystem::path &dir) {
   std::vector<std::filesystem::path> files;
   for (const auto &entry : std::filesystem::directory_iterator(dir)) {
-    if (entry.is_regular_file() && entry.path().extension() == ".txt") {
-      files.push_back(entry.path());
+    if (!entry.is_regular_file() || entry.path().extension() != ".txt") {
+      continue;
     }
+    const auto stem = ToLower(entry.path().stem().string());
+    if (!options.mnemonics.empty() && options.mnemonics.count(stem) == 0) {
+      continue;
+    }
+    files.push_back(entry.path());
   }
   std::sort(files.begin(), files.end());
   options.inputs.insert(options.inputs.end(), files.begin(), files.end());
@@ -242,7 +248,7 @@ Options ParseOptions(int argc, char **argv) {
     } else if (arg == "--input") {
       options.inputs.emplace_back(require_value("--input"));
     } else if (arg == "--input-dir") {
-      AddInputDirectory(options, require_value("--input-dir"));
+      options.input_dirs.emplace_back(require_value("--input-dir"));
     } else if (arg == "--mnemonic") {
       for (auto value : SplitCsv(require_value("--mnemonic"))) {
         options.mnemonics.insert(ToLower(std::move(value)));
@@ -271,6 +277,9 @@ Options ParseOptions(int argc, char **argv) {
     } else {
       options.inputs.emplace_back(arg);
     }
+  }
+  for (const auto &dir : options.input_dirs) {
+    AddInputDirectory(options, dir);
   }
   return options;
 }
