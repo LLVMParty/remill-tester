@@ -149,20 +149,49 @@ void RecordSkip(Summary &summary, const std::string &reason) {
   ++summary.skip_reasons[reason];
 }
 
+bool StartsWith(const std::string &text, const std::string &prefix) {
+  return text.rfind(prefix, 0) == 0;
+}
+
 std::string UnsupportedReason(const ExecutionResult &execution_result) {
   if (execution_result.backend_error.has_value() &&
       !execution_result.backend_error->empty()) {
-    return "unsupported:" + *execution_result.backend_error;
+    const auto &error = *execution_result.backend_error;
+    if (StartsWith(error, "Remill failed to lift opcode")) {
+      return "unsupported:remill_lift";
+    }
+    if (StartsWith(error, "Remill failed to decode opcode")) {
+      return "unsupported:remill_decode";
+    }
+    if (StartsWith(error, "unsupported scalar state key:") ||
+        StartsWith(error, "unsupported byte state key:")) {
+      return "unsupported:state_key";
+    }
+    if (StartsWith(error, "invalid byte state for register:")) {
+      return "unsupported:state_bytes";
+    }
+    return "unsupported:backend";
   }
   if (execution_result.exception_detail.has_value() &&
       !execution_result.exception_detail->empty()) {
-    return "unsupported:" + *execution_result.exception_detail;
+    return "unsupported:exception";
   }
   return "unsupported";
 }
 
+std::string UnsupportedDetail(const ExecutionResult &execution_result) {
+  if (execution_result.backend_error.has_value()) {
+    return *execution_result.backend_error;
+  }
+  if (execution_result.exception_detail.has_value()) {
+    return *execution_result.exception_detail;
+  }
+  return {};
+}
+
 void WriteSkipJson(std::ostream *out, const std::filesystem::path &path,
-                   const ExpectationRow &row, const std::string &reason) {
+                   const ExpectationRow &row, const std::string &reason,
+                   const std::string &detail = {}) {
   if (out == nullptr) {
     return;
   }
@@ -172,7 +201,11 @@ void WriteSkipJson(std::ostream *out, const std::filesystem::path &path,
        << ",\"state_index\":" << row.state_index << ",\"opcode\":\""
        << JsonEscape(row.opcode) << "\",\"instruction\":\""
        << JsonEscape(row.instruction) << "\",\"reason\":\""
-       << JsonEscape(reason) << "\"}\n";
+       << JsonEscape(reason) << "\"";
+  if (!detail.empty()) {
+    *out << ",\"detail\":\"" << JsonEscape(detail) << "\"";
+  }
+  *out << "}\n";
 }
 
 void WriteMismatchJson(std::ostream *out, const std::filesystem::path &path,
@@ -615,8 +648,9 @@ int Run(const Options &options) {
             remill_backend.RunCase(row, final_state_keys);
         if (execution_result.outcome_class == OutcomeClass::Unsupported) {
           const auto reason = UnsupportedReason(execution_result);
+          const auto detail = UnsupportedDetail(execution_result);
           RecordSkip(summary, reason);
-          WriteSkipJson(skip_report, path, row, reason);
+          WriteSkipJson(skip_report, path, row, reason, detail);
           continue;
         }
         const auto comparison =
