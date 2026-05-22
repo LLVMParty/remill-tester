@@ -84,6 +84,15 @@ std::string InstructionGroupKey(const std::filesystem::path &path,
   return path.string() + "#" + std::to_string(row.instruction_id);
 }
 
+bool RequiresMemoryOracle(const XedMetadata &metadata) {
+  for (const auto &memory_operand : metadata.memory_operands) {
+    if (memory_operand.reads || memory_operand.writes) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void PrintUsage(const char *argv0) {
   std::cout
       << "Usage: " << argv0 << " [options] --input 3975WX/xor.txt\n\n"
@@ -400,7 +409,7 @@ int Run(const Options &options) {
         ++summary.undefined_flag_mentions[name];
       }
       const bool memory_state_missing = metadata.ok &&
-                                        !metadata.memory_operands.empty() &&
+                                        RequiresMemoryOracle(metadata) &&
                                         row.initial_memory.empty();
       if (memory_state_missing) {
         ++summary.memory_rows_without_oracle;
