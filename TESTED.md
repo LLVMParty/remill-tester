@@ -53,6 +53,38 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/movzx.txt` | `./build-release/remill-tester 3975WX/movzx.txt --execute --stop-on-first-fail` | 75,022 passed |
 | `3975WX/movsx.txt` | `./build-release/remill-tester 3975WX/movsx.txt --execute --stop-on-first-fail` | 113,322 passed |
 | `3975WX/movsxd.txt` | `./build-release/remill-tester 3975WX/movsxd.txt --execute --stop-on-first-fail` | 54,256 passed |
+| `3975WX/setb.txt` | `./build-release/remill-tester 3975WX/setb.txt --execute --stop-on-first-fail` | 128 passed |
+| `3975WX/setbe.txt` | `./build-release/remill-tester 3975WX/setbe.txt --execute --stop-on-first-fail` | 160 passed |
+| `3975WX/setl.txt` | `./build-release/remill-tester 3975WX/setl.txt --execute --stop-on-first-fail` | 180 passed |
+| `3975WX/setle.txt` | `./build-release/remill-tester 3975WX/setle.txt --execute --stop-on-first-fail` | 180 passed |
+| `3975WX/setnb.txt` | `./build-release/remill-tester 3975WX/setnb.txt --execute --stop-on-first-fail` | 128 passed |
+| `3975WX/setnbe.txt` | `./build-release/remill-tester 3975WX/setnbe.txt --execute --stop-on-first-fail` | 180 passed |
+| `3975WX/setnl.txt` | `./build-release/remill-tester 3975WX/setnl.txt --execute --stop-on-first-fail` | 160 passed |
+| `3975WX/setnle.txt` | `./build-release/remill-tester 3975WX/setnle.txt --execute --stop-on-first-fail` | 144 passed |
+| `3975WX/setno.txt` | `./build-release/remill-tester 3975WX/setno.txt --execute --stop-on-first-fail` | 148 passed |
+| `3975WX/setnp.txt` | `./build-release/remill-tester 3975WX/setnp.txt --execute --stop-on-first-fail` | 144 passed |
+| `3975WX/setns.txt` | `./build-release/remill-tester 3975WX/setns.txt --execute --stop-on-first-fail` | 164 passed |
+| `3975WX/setnz.txt` | `./build-release/remill-tester 3975WX/setnz.txt --execute --stop-on-first-fail` | 180 passed |
+| `3975WX/seto.txt` | `./build-release/remill-tester 3975WX/seto.txt --execute --stop-on-first-fail` | 160 passed |
+| `3975WX/setp.txt` | `./build-release/remill-tester 3975WX/setp.txt --execute --stop-on-first-fail` | 160 passed |
+| `3975WX/sets.txt` | `./build-release/remill-tester 3975WX/sets.txt --execute --stop-on-first-fail` | 128 passed |
+| `3975WX/setz.txt` | `./build-release/remill-tester 3975WX/setz.txt --execute --stop-on-first-fail` | 164 passed |
+| `3975WX/cmovb.txt` | `./build-release/remill-tester 3975WX/cmovb.txt --execute --stop-on-first-fail` | 56,472 passed |
+| `3975WX/cmovbe.txt` | `./build-release/remill-tester 3975WX/cmovbe.txt --execute --stop-on-first-fail` | 56,672 passed |
+| `3975WX/cmovl.txt` | `./build-release/remill-tester 3975WX/cmovl.txt --execute --stop-on-first-fail` | 56,840 passed |
+| `3975WX/cmovle.txt` | `./build-release/remill-tester 3975WX/cmovle.txt --execute --stop-on-first-fail` | 56,936 passed |
+| `3975WX/cmovnb.txt` | `./build-release/remill-tester 3975WX/cmovnb.txt --execute --stop-on-first-fail` | 56,352 passed |
+| `3975WX/cmovnbe.txt` | `./build-release/remill-tester 3975WX/cmovnbe.txt --execute --stop-on-first-fail` | 57,040 passed |
+| `3975WX/cmovnl.txt` | `./build-release/remill-tester 3975WX/cmovnl.txt --execute --stop-on-first-fail` | 56,848 passed |
+| `3975WX/cmovnle.txt` | `./build-release/remill-tester 3975WX/cmovnle.txt --execute --stop-on-first-fail` | 57,024 passed |
+| `3975WX/cmovno.txt` | `./build-release/remill-tester 3975WX/cmovno.txt --execute --stop-on-first-fail` | 56,624 passed |
+| `3975WX/cmovnp.txt` | `./build-release/remill-tester 3975WX/cmovnp.txt --execute --stop-on-first-fail` | 56,496 passed |
+| `3975WX/cmovns.txt` | `./build-release/remill-tester 3975WX/cmovns.txt --execute --stop-on-first-fail` | 56,304 passed |
+| `3975WX/cmovnz.txt` | `./build-release/remill-tester 3975WX/cmovnz.txt --execute --stop-on-first-fail` | 56,672 passed |
+| `3975WX/cmovo.txt` | `./build-release/remill-tester 3975WX/cmovo.txt --execute --stop-on-first-fail` | 56,520 passed |
+| `3975WX/cmovp.txt` | `./build-release/remill-tester 3975WX/cmovp.txt --execute --stop-on-first-fail` | 56,352 passed |
+| `3975WX/cmovs.txt` | `./build-release/remill-tester 3975WX/cmovs.txt --execute --stop-on-first-fail` | 56,704 passed |
+| `3975WX/cmovz.txt` | `./build-release/remill-tester 3975WX/cmovz.txt --execute --stop-on-first-fail` | 56,568 passed |
 | `3975WX/rol.txt` | `./build/remill-tester 3975WX/rol.txt --execute --stop-on-first-fail` | 29,018 passed |
 | `3975WX/ror.txt` | `./build/remill-tester 3975WX/ror.txt --execute --stop-on-first-fail` | 28,157 passed |
 | `3975WX/rcl.txt` | `./build/remill-tester 3975WX/rcl.txt --execute --stop-on-first-fail` | 32,090 passed |
@@ -62,10 +94,6 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 
 | Corpus | Command | Result |
 |---|---|---|
-| `3975WX/cmovz.txt` | `./build/remill-tester 3975WX/cmovz.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
-| `3975WX/cmovnz.txt` | `./build/remill-tester 3975WX/cmovnz.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
-| `3975WX/setz.txt` | `./build/remill-tester 3975WX/setz.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
-| `3975WX/setnz.txt` | `./build/remill-tester 3975WX/setnz.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
 
 ## Current known mismatches
 
