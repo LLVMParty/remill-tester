@@ -130,6 +130,15 @@ bool RequiresMemoryOracle(const XedMetadata &metadata) {
   return false;
 }
 
+bool IsPrivilegedOrIoUnsupported(const XedMetadata &metadata) {
+  static const std::set<std::string> unsupported_iclasses = {
+      "CLI",  "STI",   "HLT",   "IN",     "OUT",    "INSB",  "INSW",
+      "INSD", "OUTSB", "OUTSW", "OUTSD",  "LGDT",   "LIDT",  "LLDT",
+      "LTR",  "LMSW",  "CLTS",  "INVLPG", "WBINVD", "RDMSR", "WRMSR"};
+  return metadata.category == "IO" ||
+         unsupported_iclasses.count(metadata.iclass) != 0;
+}
+
 void RecordSkip(Summary &summary, const std::string &reason) {
   ++summary.execution_skipped;
   ++summary.skip_reasons[reason];
@@ -565,6 +574,12 @@ int Run(const Options &options) {
         }
         if (memory_state_missing) {
           const std::string reason = "memory_state_missing";
+          RecordSkip(summary, reason);
+          WriteSkipJson(skip_report, path, row, reason);
+          continue;
+        }
+        if (IsPrivilegedOrIoUnsupported(metadata)) {
+          const std::string reason = "privileged_or_io_unsupported";
           RecordSkip(summary, reason);
           WriteSkipJson(skip_report, path, row, reason);
           continue;
