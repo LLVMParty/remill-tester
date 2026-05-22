@@ -121,6 +121,8 @@ set(remill-tester_SOURCES
 	"src/flag_masks.hpp"
 	"src/guest_memory.cpp"
 	"src/guest_memory.hpp"
+	"src/remill_backend.cpp"
+	"src/remill_backend.hpp"
 	"src/remill_intrinsics.cpp"
 	"src/remill_intrinsics.hpp"
 	"src/remill_state_bridge.cpp"
@@ -149,5 +151,7 @@ target_include_directories(remill-tester PRIVATE
     "${CMAKE_SOURCE_DIR}/dependencies/remill/include"
 )
 target_link_libraries(remill-tester PRIVATE
+    LLVM-Wrapper
+    remill
     "${CMAKE_SOURCE_DIR}/dependencies/install/lib/libxed.a"
 )

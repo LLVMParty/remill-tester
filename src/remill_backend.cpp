@@ -1,0 +1,297 @@
+#include "remill_backend.hpp"
+
+#include "guest_memory.hpp"
+#include "remill_intrinsics.hpp"
+#include "remill_state_bridge.hpp"
+#include "x86tester_parser.hpp"
+
+#include <sstream>
+#include <string_view>
+
+#include <glog/logging.h>
+
+#include <llvm/ExecutionEngine/Orc/ExecutionUtils.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/PassManager.h>
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Support/Error.h>
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/TargetParser/Host.h>
+#include <llvm/TargetParser/Triple.h>
+#include <llvm/Transforms/IPO/GlobalDCE.h>
+
+#include <remill/Arch/Arch.h>
+#include <remill/Arch/Instruction.h>
+#include <remill/BC/ABI.h>
+#include <remill/BC/IntrinsicTable.h>
+#include <remill/BC/Lifter.h>
+#include <remill/BC/Optimizer.h>
+#include <remill/BC/Util.h>
+
+struct Memory;
+
+namespace remill_tester {
+namespace {
+
+using LiftedFunction = Memory *(*)(State *, std::uint64_t, Memory *);
+
+std::string ToString(llvm::Error error) {
+  if (!error) {
+    return {};
+  }
+  return llvm::toString(std::move(error));
+}
+
+std::string DecodeKey(const ExpectationRow &row) {
+  return std::to_string(row.address) + "#" + row.opcode;
+}
+
+std::string FunctionName(std::uint64_t id, const ExpectationRow &row) {
+  std::ostringstream out;
+  out << "lifted_" << id << '_' << row.opcode;
+  return out.str();
+}
+
+std::uint64_t PageBase(std::uint64_t address) {
+  return address & ~(GuestMemory::kPageSize - 1);
+}
+
+void PruneModuleForJit(llvm::Module &module, llvm::Function *entry_function) {
+  for (auto &function : module.functions()) {
+    if (&function != entry_function && !function.isDeclaration()) {
+      function.setLinkage(llvm::GlobalValue::InternalLinkage);
+    }
+  }
+  for (auto &global : module.globals()) {
+    if (!global.isDeclaration()) {
+      global.setLinkage(llvm::GlobalValue::InternalLinkage);
+    }
+  }
+  for (auto &alias : module.aliases()) {
+    alias.setLinkage(llvm::GlobalValue::InternalLinkage);
+  }
+
+  llvm::LoopAnalysisManager loop_analysis_manager;
+  llvm::FunctionAnalysisManager function_analysis_manager;
+  llvm::CGSCCAnalysisManager cgscc_analysis_manager;
+  llvm::ModuleAnalysisManager module_analysis_manager;
+  llvm::PassBuilder pass_builder;
+  pass_builder.registerModuleAnalyses(module_analysis_manager);
+  pass_builder.registerCGSCCAnalyses(cgscc_analysis_manager);
+  pass_builder.registerFunctionAnalyses(function_analysis_manager);
+  pass_builder.registerLoopAnalyses(loop_analysis_manager);
+  pass_builder.crossRegisterProxies(
+      loop_analysis_manager, function_analysis_manager, cgscc_analysis_manager,
+      module_analysis_manager);
+
+  llvm::ModulePassManager module_pass_manager;
+  module_pass_manager.addPass(llvm::GlobalDCEPass());
+  module_pass_manager.run(module, module_analysis_manager);
+}
+
+void InitializeLlvmNativeTargetOnce() {
+  static const bool initialized = [] {
+    llvm::InitializeNativeTarget();
+    llvm::InitializeNativeTargetAsmPrinter();
+    llvm::InitializeNativeTargetAsmParser();
+    return true;
+  }();
+  (void)initialized;
+}
+
+} // namespace
+
+struct RemillBackend::CompiledInstruction {
+  std::string name;
+  LiftedFunction function = nullptr;
+};
+
+RemillBackend::RemillBackend() = default;
+RemillBackend::~RemillBackend() = default;
+
+bool RemillBackend::SupportsCase(const ExpectationRow &row) const {
+  return !row.opcode.empty();
+}
+
+ExecutionResult
+RemillBackend::RunCase(const ExpectationRow &row,
+                       const std::vector<std::string> &final_state_keys) {
+  ExecutionResult result;
+  if (!SupportsCase(row)) {
+    result.outcome_class = OutcomeClass::Unsupported;
+    result.backend_error = "row has no opcode";
+    return result;
+  }
+
+  std::string error;
+  if (!EnsureInitialized(error)) {
+    result.outcome_class = OutcomeClass::BackendError;
+    result.backend_error = error;
+    return result;
+  }
+
+  auto *compiled = Compile(row, error);
+  if (compiled == nullptr) {
+    result.outcome_class = OutcomeClass::BackendError;
+    result.backend_error = error;
+    return result;
+  }
+
+  State state;
+  ResetState(state);
+  if (!ApplyInitialState(state, row.initial_state, &error)) {
+    result.outcome_class = OutcomeClass::Unsupported;
+    result.backend_error = error;
+    return result;
+  }
+  if (GetScalarRegister(state, "rip").value_or(0) == 0) {
+    SetScalarRegister(state, "rip", row.address);
+  }
+
+  GuestMemory memory;
+  const auto opcode_bytes = ParseHexBytes(row.opcode);
+  memory.Map(PageBase(row.address), GuestMemory::kPageSize,
+             MemoryPermissions::ReadExecute | MemoryPermissions::Write);
+  memory.Write(row.address, opcode_bytes);
+  for (const auto &cell : row.initial_memory) {
+    const auto permissions =
+        cell.permissions == 0 ? MemoryPermissions::ReadWrite : cell.permissions;
+    memory.Map(PageBase(cell.address), cell.bytes.size(), permissions);
+    memory.Write(cell.address, cell.bytes);
+  }
+
+  compiled->function(&state, row.address, memory.opaque());
+
+  if (!memory.ok()) {
+    const auto fault = memory.last_fault();
+    result.outcome_class = fault && fault->kind == MemoryFaultKind::Unsupported
+                               ? OutcomeClass::Unsupported
+                               : OutcomeClass::Exception;
+    if (fault) {
+      std::ostringstream detail;
+      detail << fault->operation << " fault at 0x" << std::hex << fault->address
+             << ": " << fault->detail;
+      result.exception_detail = detail.str();
+    }
+    return result;
+  }
+
+  result.outcome_class = OutcomeClass::Normal;
+  result.final_state = SnapshotState(state, final_state_keys);
+  return result;
+}
+
+bool RemillBackend::EnsureInitialized(std::string &error) {
+  if (jit_ && arch_) {
+    return true;
+  }
+
+  InitializeLlvmNativeTargetOnce();
+  RegisterRemillIntrinsicSymbols();
+
+  google::InitGoogleLogging("remill-tester");
+
+  context_ =
+      llvm::orc::ThreadSafeContext(std::make_unique<llvm::LLVMContext>());
+  auto *llvm_context = context_.withContextDo(
+      [](llvm::LLVMContext *context) -> llvm::LLVMContext * {
+        return context;
+      });
+  if (llvm_context == nullptr) {
+    error = "failed to create LLVM context";
+    return false;
+  }
+
+  arch_ = remill::Arch::Get(*llvm_context, "linux", "amd64");
+  if (!arch_) {
+    error = "failed to create Remill linux/amd64 architecture";
+    return false;
+  }
+
+  auto jit_or_error = llvm::orc::LLJITBuilder().create();
+  if (!jit_or_error) {
+    error = ToString(jit_or_error.takeError());
+    return false;
+  }
+  jit_ = std::move(*jit_or_error);
+
+  auto generator =
+      llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
+          jit_->getDataLayout().getGlobalPrefix());
+  if (!generator) {
+    error = ToString(generator.takeError());
+    return false;
+  }
+  jit_->getMainJITDylib().addGenerator(std::move(*generator));
+  return true;
+}
+
+RemillBackend::CompiledInstruction *
+RemillBackend::Compile(const ExpectationRow &row, std::string &error) {
+  const auto key = DecodeKey(row);
+  if (auto it = cache_.find(key); it != cache_.end()) {
+    return it->second.get();
+  }
+
+  auto semantics = remill::LoadArchSemantics(arch_.get());
+  if (!semantics) {
+    error = "failed to load Remill semantics";
+    return nullptr;
+  }
+  intrinsics_ = arch_->GetInstrinsicTable();
+  if (intrinsics_ == nullptr) {
+    error = "failed to create Remill intrinsic table";
+    return nullptr;
+  }
+
+  const auto opcode_bytes = ParseHexBytes(row.opcode);
+  std::string_view instruction_bytes(
+      reinterpret_cast<const char *>(opcode_bytes.data()), opcode_bytes.size());
+
+  remill::Instruction instruction;
+  remill::DecodingContext decoding_context = arch_->CreateInitialContext();
+  if (!arch_->DecodeInstruction(row.address, instruction_bytes, instruction,
+                                decoding_context)) {
+    error = "Remill failed to decode opcode " + row.opcode;
+    return nullptr;
+  }
+
+  const auto function_name = FunctionName(next_function_id_++, row);
+  auto *function = arch_->DefineLiftedFunction(function_name, semantics.get());
+  auto *block = &function->getEntryBlock();
+  auto lifter = instruction.GetLifter();
+  const auto status = lifter->LiftIntoBlock(instruction, block);
+  if (status != remill::kLiftedInstruction) {
+    error = "Remill failed to lift opcode " + row.opcode;
+    return nullptr;
+  }
+
+  llvm::IRBuilder<> ir(block);
+  ir.CreateRet(remill::LoadMemoryPointer(block, *intrinsics_));
+  remill::OptimizeModule(arch_.get(), semantics.get(), {function});
+  PruneModuleForJit(*semantics, function);
+  semantics->setDataLayout(jit_->getDataLayout());
+  semantics->setTargetTriple(llvm::Triple(llvm::sys::getProcessTriple()));
+
+  auto add_error = jit_->addIRModule(
+      llvm::orc::ThreadSafeModule(std::move(semantics), context_));
+  if (add_error) {
+    error = ToString(std::move(add_error));
+    return nullptr;
+  }
+
+  auto symbol = jit_->lookup(function_name);
+  if (!symbol) {
+    error = ToString(symbol.takeError());
+    return nullptr;
+  }
+
+  auto compiled = std::make_unique<CompiledInstruction>();
+  compiled->name = function_name;
+  compiled->function = symbol->toPtr<LiftedFunction>();
+  auto *compiled_ptr = compiled.get();
+  cache_[key] = std::move(compiled);
+  return compiled_ptr;
+}
+
+} // namespace remill_tester

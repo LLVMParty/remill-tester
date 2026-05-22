@@ -20,6 +20,22 @@ struct MemoryExpectation {
   std::vector<std::uint8_t> mask;
 };
 
+enum class OutcomeClass {
+  Normal,
+  Exception,
+  Unsupported,
+  BackendError,
+};
+
+struct ExecutionResult {
+  OutcomeClass outcome_class = OutcomeClass::BackendError;
+  std::map<std::string, std::uint64_t> final_state;
+  std::map<std::string, std::vector<std::uint8_t>> final_bytes;
+  std::vector<MemoryExpectation> final_memory;
+  std::optional<std::string> exception_detail;
+  std::optional<std::string> backend_error;
+};
+
 struct ExpectationRow {
   std::uint64_t test_case_id = 0;
   std::uint64_t instruction_id = 0;

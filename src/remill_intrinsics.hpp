@@ -5,6 +5,10 @@
 struct Memory;
 struct State;
 
+namespace remill_tester {
+void RegisterRemillIntrinsicSymbols();
+}
+
 extern "C" {
 
 std::uint8_t __remill_read_memory_8(Memory *memory, std::uint64_t address);

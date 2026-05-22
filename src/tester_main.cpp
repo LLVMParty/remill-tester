@@ -1,5 +1,6 @@
 #include "flag_masks.hpp"
 #include "guest_memory.hpp"
+#include "remill_backend.hpp"
 #include "remill_intrinsics.hpp"
 #include "remill_state_bridge.hpp"
 #include "x86tester_parser.hpp"
@@ -75,12 +76,6 @@ std::string DecodeKey(const ExpectationRow &row) {
 std::string InstructionGroupKey(const std::filesystem::path &path,
                                 const ExpectationRow &row) {
   return path.string() + "#" + std::to_string(row.instruction_id);
-}
-
-std::string FormatHex32(std::uint32_t value) {
-  std::ostringstream out;
-  out << "0x" << std::hex << std::uppercase << value;
-  return out.str();
 }
 
 void PrintUsage(const char *argv0) {
@@ -233,6 +228,23 @@ void RunSelfTests() {
   Require(snapshot.at("rax") == 0xAAAAAAAAAAAAAAAAull, "snapshot rax");
   Require((snapshot.at("flag") & (kFlagCF | kFlagDF)) == (kFlagCF | kFlagDF),
           "snapshot flags");
+
+  ExpectationRow xor_row;
+  xor_row.address = 0x4000001;
+  xor_row.opcode = "4831D8";
+  xor_row.instruction = "xor rax, rbx";
+  xor_row.initial_state = {{"rax", 0xff}, {"rbx", 0x0f}, {"flag", 0}};
+  RemillBackend remill_backend;
+  const auto remill_result = remill_backend.RunCase(xor_row, {"rax", "flag"});
+  Require(remill_result.outcome_class == OutcomeClass::Normal,
+          remill_result.backend_error.value_or(
+              remill_result.exception_detail.value_or("Remill smoke failed")));
+  Require(remill_result.final_state.at("rax") == 0xf0,
+          "Remill smoke computes xor rax, rbx");
+  Require((remill_result.final_state.at("flag") &
+           xor_meta.comparable_written_flags) ==
+              (kFlagPF & xor_meta.comparable_written_flags),
+          "Remill smoke flags match comparable XED-defined XOR flags");
 
   std::cout << "self-test: ok\n";
 }
