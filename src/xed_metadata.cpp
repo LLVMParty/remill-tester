@@ -49,6 +49,7 @@ XedMetadata XedDecoder::Decode(std::uint64_t address,
 
   metadata.ok = true;
   metadata.length = xed_decoded_inst_get_length(&xedd);
+  metadata.operand_width = xed_decoded_inst_get_operand_width(&xedd);
   metadata.iclass =
       SafeString(xed_iclass_enum_t2str(xed_decoded_inst_get_iclass(&xedd)));
   metadata.category =

@@ -6,7 +6,9 @@
 
 #include <algorithm>
 #include <iomanip>
+#include <optional>
 #include <sstream>
+#include <string_view>
 
 namespace remill_tester {
 namespace {
@@ -46,6 +48,48 @@ std::uint64_t FirstBytesAsLittleEndian(const std::vector<std::uint8_t> &bytes) {
     value |= static_cast<std::uint64_t>(bytes[i]) << (i * 8);
   }
   return value;
+}
+
+std::optional<std::uint64_t> ParseShiftCount(const ExpectationRow &row) {
+  auto instruction = ToLower(row.instruction);
+  const auto comma = instruction.rfind(',');
+  if (comma == std::string::npos) {
+    return std::nullopt;
+  }
+  auto count_text = Trim(instruction.substr(comma + 1));
+  if (count_text == "cl") {
+    if (const auto it = row.initial_state.find("rcx");
+        it != row.initial_state.end()) {
+      return it->second & 0xffu;
+    }
+    return std::nullopt;
+  }
+  try {
+    return std::stoull(count_text, nullptr, 0);
+  } catch (const std::exception &) {
+    return std::nullopt;
+  }
+}
+
+std::uint32_t DynamicUndefinedFlagMask(const ExpectationRow &row,
+                                       const XedMetadata &metadata) {
+  if (!(metadata.iclass == "SHL" || metadata.iclass == "SAL" ||
+        metadata.iclass == "SHR" || metadata.iclass == "SAR")) {
+    return 0;
+  }
+  if (metadata.operand_width == 0) {
+    return 0;
+  }
+  const auto raw_count = ParseShiftCount(row);
+  if (!raw_count.has_value()) {
+    return 0;
+  }
+  const auto count_mask = metadata.operand_width == 64 ? 0x3fu : 0x1fu;
+  const auto effective_count = *raw_count & count_mask;
+  if (effective_count >= metadata.operand_width && effective_count != 0) {
+    return kFlagCF;
+  }
+  return 0;
 }
 
 } // namespace
@@ -100,7 +144,8 @@ CompareExecutionResult(const ExpectationRow &row, const XedMetadata &metadata,
       const auto actual = actual_it->second;
       if (key == "flag") {
         const auto care_mask = static_cast<std::uint64_t>(
-            metadata.comparable_written_flags & kUserRFlagsMask);
+            metadata.comparable_written_flags & kUserRFlagsMask &
+            ~DynamicUndefinedFlagMask(row, metadata));
         if (care_mask == 0) {
           continue;
         }

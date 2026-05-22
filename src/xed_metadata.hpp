@@ -19,6 +19,7 @@ struct XedMetadata {
   bool ok = false;
   std::string error;
   unsigned length = 0;
+  unsigned operand_width = 0;
   std::string iclass;
   std::string category;
   std::string extension;
