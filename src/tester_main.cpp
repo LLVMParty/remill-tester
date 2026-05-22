@@ -1,4 +1,6 @@
 #include "flag_masks.hpp"
+#include "guest_memory.hpp"
+#include "remill_intrinsics.hpp"
 #include "x86tester_parser.hpp"
 #include "xed_metadata.hpp"
 
@@ -170,6 +172,40 @@ void RunSelfTests() {
   Require(not_meta.ok, "XED decodes not rcx");
   Require(not_meta.iclass == "NOT", "XED iclass for not rcx");
   Require(not_meta.written_flags == 0, "NOT does not write user-mode RFLAGS");
+
+  GuestMemory memory;
+  Require(memory.Map(0x1000, GuestMemory::kPageSize * 2), "map two pages");
+  Require(memory.WriteLittleEndian<std::uint32_t>(0x1ffe, 0xAABBCCDDu),
+          "cross-page little-endian write");
+  std::uint32_t cross_page = 0;
+  Require(memory.ReadLittleEndian(0x1ffe, cross_page),
+          "cross-page little-endian read");
+  Require(cross_page == 0xAABBCCDDu, "cross-page value roundtrip");
+
+  auto *opaque_memory = memory.opaque();
+  __remill_write_memory_32(opaque_memory, 0x1100, 0x11223344u);
+  Require(__remill_read_memory_32(opaque_memory, 0x1100) == 0x11223344u,
+          "Remill memory helpers read back written values");
+
+  std::uint32_t expected = 0x11223344u;
+  __remill_compare_exchange_memory_32(opaque_memory, 0x1100, expected,
+                                      0x55667788u);
+  Require(expected == 0x11223344u,
+          "compare-exchange preserves matching expected");
+  Require(__remill_read_memory_32(opaque_memory, 0x1100) == 0x55667788u,
+          "compare-exchange writes desired value on match");
+
+  std::uint32_t addend = 2;
+  __remill_fetch_and_add_32(opaque_memory, 0x1100, addend);
+  Require(addend == 0x55667788u, "fetch-add returns old value by reference");
+  Require(__remill_read_memory_32(opaque_memory, 0x1100) == 0x5566778Au,
+          "fetch-add stores updated value");
+
+  memory.ClearStatus();
+  (void)__remill_read_memory_8(opaque_memory, 0x9000);
+  Require(!memory.ok(), "unmapped helper read records a memory fault");
+  Require(memory.last_fault()->kind == MemoryFaultKind::Unmapped,
+          "unmapped helper read records unmapped fault kind");
 
   std::cout << "self-test: ok\n";
 }
