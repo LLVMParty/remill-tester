@@ -260,6 +260,29 @@ void RunSelfTests() {
               (kFlagPF & xor_meta.comparable_written_flags),
           "Remill smoke flags match comparable XED-defined XOR flags");
 
+  const auto not_mem_meta = decoder.Decode(0x4001000, ParseHexBytes("48F710"));
+  Require(not_mem_meta.ok, "XED decodes not qword ptr [rax]");
+  Require(!not_mem_meta.memory_operands.empty(),
+          "XED reports memory operand for not qword ptr [rax]");
+  ExpectationRow not_mem_row;
+  not_mem_row.address = 0x4001000;
+  not_mem_row.opcode = "48F710";
+  not_mem_row.instruction = "not qword ptr [rax]";
+  not_mem_row.initial_state = {{"rax", 0x2000}, {"flag", 0}};
+  not_mem_row.initial_memory.push_back(
+      MemoryCell{0x2000,
+                 {0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00},
+                 MemoryPermissions::ReadWrite});
+  not_mem_row.expected_memory.push_back(MemoryExpectation{
+      0x2000, {0x00, 0xff, 0x00, 0xff, 0x00, 0xff, 0x00, 0xff}, {}});
+  const auto not_mem_result = remill_backend.RunCase(not_mem_row, {});
+  const auto not_mem_comparison =
+      CompareExecutionResult(not_mem_row, not_mem_meta, not_mem_result);
+  Require(not_mem_comparison.passed,
+          not_mem_comparison.mismatches.empty()
+              ? "Remill memory smoke failed"
+              : FormatMismatch(not_mem_row, not_mem_comparison.mismatches[0]));
+
   std::cout << "self-test: ok\n";
 }
 

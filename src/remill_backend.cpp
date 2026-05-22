@@ -157,11 +157,23 @@ RemillBackend::RunCase(const ExpectationRow &row,
   for (const auto &cell : row.initial_memory) {
     const auto permissions =
         cell.permissions == 0 ? MemoryPermissions::ReadWrite : cell.permissions;
-    memory.Map(PageBase(cell.address), cell.bytes.size(), permissions);
+    memory.Map(cell.address, cell.bytes.size(), permissions);
     memory.Write(cell.address, cell.bytes);
   }
 
   compiled->function(&state, row.address, memory.opaque());
+
+  if (memory.ok()) {
+    for (const auto &expectation : row.expected_memory) {
+      MemoryExpectation observed;
+      observed.address = expectation.address;
+      observed.bytes.resize(expectation.bytes.size());
+      observed.mask = expectation.mask;
+      memory.Read(observed.address, observed.bytes.data(),
+                  observed.bytes.size());
+      result.final_memory.push_back(std::move(observed));
+    }
+  }
 
   if (!memory.ok()) {
     const auto fault = memory.last_fault();
