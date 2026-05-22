@@ -136,7 +136,7 @@ bool IsPrivilegedOrIoUnsupported(const XedMetadata &metadata) {
       "CLI",  "STI",   "HLT",   "IN",     "OUT",    "INSB",  "INSW",
       "INSD", "OUTSB", "OUTSW", "OUTSD",  "LGDT",   "LIDT",  "LLDT",
       "LTR",  "LMSW",  "CLTS",  "INVLPG", "WBINVD", "RDMSR", "WRMSR"};
-  return metadata.category == "IO" ||
+  return metadata.category == "IO" || metadata.category == "SYSTEM" ||
          unsupported_iclasses.count(metadata.iclass) != 0;
 }
 
