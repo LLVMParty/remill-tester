@@ -4,7 +4,11 @@ This file records currently known non-green areas separately from `TESTED.md`.
 
 ## Current semantic failures
 
-No current full-file semantic mismatches are known in the committed tester state.
+Known current semantic mismatches in the committed tester state:
+
+| Area | Example command | Current result | Notes |
+|---|---|---|---|
+| Approximate reciprocal square root | `./build-release/remill-tester 3975WX/rsqrtss.txt --execute --stop-on-first-fail` | First mismatch at state 65: expected `xmm0=0x5EB50000`, actual `0x5EB504F3` | Remill computes a precise reciprocal square root path; 3975WX returns the architectural approximate result. |
 
 The earlier `divpd`/`divps`/`divsd`/`divss` NaN-sign issue is fixed by Remill submodule commit `9c88816`:
 
@@ -14,6 +18,15 @@ The earlier `divpd`/`divps`/`divsd`/`divss` NaN-sign issue is fixed by Remill su
   - `divps.txt`: `62,824 passed, 0 failed, 0 skipped`
   - `divsd.txt`: `61,944 passed, 0 failed, 0 skipped`
   - `divss.txt`: `59,912 passed, 0 failed, 0 skipped`
+
+The earlier packed-double min/max and packed-single sqrt lift gaps are fixed by Remill submodule commit `1ddc9d1`:
+
+- Before the fix, `maxpd.txt` skipped all `61,568` rows as `unsupported:remill_lift`.
+- Before the fix, `sqrtps.txt` skipped all `64,168` rows as `unsupported:remill_lift`.
+- After the fix, full Release runs pass:
+  - `maxpd.txt`: `61,568 passed, 0 failed, 0 skipped`
+  - `minpd.txt`: `61,768 passed, 0 failed, 0 skipped`
+  - `sqrtps.txt`: `64,168 passed, 0 failed, 0 skipped`
 
 The earlier `movzx`/`movsx`/`movsxd` issue is fixed by Remill submodule commit `d83d754` and parent commit `160f119`:
 
@@ -33,8 +46,7 @@ These are not counted as semantic failures by the runner (`execution_failed=0`),
 | Area | Example command | Current result | Notes |
 |---|---|---|---|
 | Raw memory-oracle gaps | `./build-release/remill-tester 3975WX/xlat.txt --execute --stop-on-first-fail` | `0 passed, 0 failed, 16 skipped`; `memory_state_missing=16` | Raw `3975WX` rows do not serialize table memory contents. Needs normalized `mem[...]` input/output cells or generator changes. |
-| Remill lift unsupported: packed double min/max | `./build-release/remill-tester 3975WX/maxpd.txt --execute --stop-on-first-fail` | `0 passed, 0 failed, 61,568 skipped`; `unsupported:remill_lift=61,568` | `maxps`, `maxsd`, and `maxss` full files pass; packed-double variants need Remill lift support/triage. |
-| Remill lift unsupported: packed single sqrt | `./build-release/remill-tester 3975WX/sqrtps.txt --execute --stop-on-first-fail` | `0 passed, 0 failed, 64,168 skipped`; `unsupported:remill_lift=64,168` | `sqrtpd`, `sqrtsd`, and `sqrtss` full files pass. |
+| Remill lift unsupported: packed single reciprocal sqrt | `./build-release/remill-tester 3975WX/rsqrtps.txt --execute --limit-states 20 --stop-on-first-fail` | `20 skipped`; `unsupported:remill_lift=20` | Scalar `rsqrtss` lifts but currently mismatches the 3975WX approximate result. |
 | Remill lift unsupported: AES | `./build-release/remill-tester 3975WX/aesenc.txt --execute --limit-states 20 --stop-on-first-fail` | `20 skipped`; `unsupported:remill_lift=20` | Also observed for `aesdec`. |
 | x87/FPU state unsupported | `./build-release/remill-tester 3975WX/fadd.txt --execute --limit-states 5 --stop-on-first-fail` | skipped as `fpu_state_unsupported` | Requires x87 state bridge and safe JIT support before comparing. |
 | Privileged/IO/system instructions | e.g. `cli`, `rdtsc` limited runs | skipped as `privileged_or_io_unsupported` | Avoids host JIT fatal paths and nondeterministic system semantics. |
