@@ -133,7 +133,12 @@ RemillBackend::RunCase(const ExpectationRow &row,
 
   auto *compiled = Compile(row, error);
   if (compiled == nullptr) {
-    result.outcome_class = OutcomeClass::BackendError;
+    if (error.rfind("Remill failed to decode", 0) == 0 ||
+        error.rfind("Remill failed to lift", 0) == 0) {
+      result.outcome_class = OutcomeClass::Unsupported;
+    } else {
+      result.outcome_class = OutcomeClass::BackendError;
+    }
     result.backend_error = error;
     return result;
   }
