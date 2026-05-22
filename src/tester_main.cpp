@@ -650,12 +650,9 @@ int Run(const Options &options) {
               << '\n';
     std::cout << "summary.execution_skipped=" << summary.execution_skipped
               << '\n';
-    if (!summary.skip_reasons.empty()) {
-      std::cout << "summary.skip_reasons:";
-      for (const auto &[reason, count] : summary.skip_reasons) {
-        std::cout << ' ' << reason << '=' << count;
-      }
-      std::cout << '\n';
+    for (const auto &[reason, count] : summary.skip_reasons) {
+      std::cout << "summary.skip_reason reason=\"" << JsonEscape(reason)
+                << "\" count=" << count << '\n';
     }
   }
 
