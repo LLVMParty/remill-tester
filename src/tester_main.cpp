@@ -1,6 +1,7 @@
 #include "flag_masks.hpp"
 #include "guest_memory.hpp"
 #include "remill_intrinsics.hpp"
+#include "remill_state_bridge.hpp"
 #include "x86tester_parser.hpp"
 #include "xed_metadata.hpp"
 
@@ -206,6 +207,32 @@ void RunSelfTests() {
   Require(!memory.ok(), "unmapped helper read records a memory fault");
   Require(memory.last_fault()->kind == MemoryFaultKind::Unmapped,
           "unmapped helper read records unmapped fault kind");
+
+  State state;
+  ResetState(state);
+  Require(SetScalarRegister(state, "rax", 0x1234), "set rax");
+  Require(SetScalarRegister(state, "r15", 0x5678), "set r15");
+  Require(SetScalarRegister(state, "rip", 0x4000001), "set rip");
+  Require(GetScalarRegister(state, "rax") == 0x1234, "get rax");
+  Require(GetScalarRegister(state, "r15") == 0x5678, "get r15");
+  Require(GetScalarRegister(state, "rip") == 0x4000001, "get rip");
+
+  const auto user_flags = static_cast<std::uint64_t>(
+      kFlagCF | kFlagPF | kFlagAF | kFlagZF | kFlagSF | kFlagTF | kFlagIF |
+      kFlagDF | kFlagOF | kFlagIOPL | kFlagNT | kFlagRF | kFlagAC | kFlagID);
+  SetFlags(state, user_flags);
+  Require((GetFlags(state) & kUserRFlagsMask) == user_flags,
+          "pack/unpack all user-mode RFLAGS bits");
+
+  std::map<std::string, std::uint64_t> initial_state = {
+      {"rax", 0xAAAAAAAAAAAAAAAAull}, {"flag", kFlagCF | kFlagDF}};
+  std::string apply_error;
+  Require(ApplyInitialState(state, initial_state, &apply_error),
+          "apply sparse initial state");
+  const auto snapshot = SnapshotState(state, {"rax", "flag"});
+  Require(snapshot.at("rax") == 0xAAAAAAAAAAAAAAAAull, "snapshot rax");
+  Require((snapshot.at("flag") & (kFlagCF | kFlagDF)) == (kFlagCF | kFlagDF),
+          "snapshot flags");
 
   std::cout << "self-test: ok\n";
 }

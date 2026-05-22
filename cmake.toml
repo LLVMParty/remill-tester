@@ -58,6 +58,8 @@ sources = [
     "src/guest_memory.hpp",
     "src/remill_intrinsics.cpp",
     "src/remill_intrinsics.hpp",
+    "src/remill_state_bridge.cpp",
+    "src/remill_state_bridge.hpp",
     "src/flag_masks.cpp",
     "src/flag_masks.hpp",
     "src/expectation.hpp",
@@ -66,6 +68,7 @@ cmake-after = """
 target_compile_features(remill-tester PRIVATE cxx_std_17)
 target_include_directories(remill-tester PRIVATE
     "${CMAKE_SOURCE_DIR}/dependencies/install/include"
+    "${CMAKE_SOURCE_DIR}/dependencies/remill/include"
 )
 target_link_libraries(remill-tester PRIVATE
     "${CMAKE_SOURCE_DIR}/dependencies/install/lib/libxed.a"

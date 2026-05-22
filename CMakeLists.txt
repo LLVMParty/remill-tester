@@ -123,6 +123,8 @@ set(remill-tester_SOURCES
 	"src/guest_memory.hpp"
 	"src/remill_intrinsics.cpp"
 	"src/remill_intrinsics.hpp"
+	"src/remill_state_bridge.cpp"
+	"src/remill_state_bridge.hpp"
 	"src/tester_main.cpp"
 	"src/x86tester_parser.cpp"
 	"src/x86tester_parser.hpp"
@@ -144,6 +146,7 @@ set(CMKR_TARGET remill-tester)
 target_compile_features(remill-tester PRIVATE cxx_std_17)
 target_include_directories(remill-tester PRIVATE
     "${CMAKE_SOURCE_DIR}/dependencies/install/include"
+    "${CMAKE_SOURCE_DIR}/dependencies/remill/include"
 )
 target_link_libraries(remill-tester PRIVATE
     "${CMAKE_SOURCE_DIR}/dependencies/install/lib/libxed.a"
