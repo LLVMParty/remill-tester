@@ -146,6 +146,13 @@ ExpectationRow ParseStateRow(const std::string &line,
                              std::uint64_t test_case_id,
                              std::uint64_t state_index) {
   auto trimmed = Trim(line);
+  if (trimmed.rfind("in:", 0) == 0) {
+    const auto out_pos = trimmed.find("out:", 3);
+    if (out_pos != std::string::npos &&
+        (out_pos == 0 || trimmed[out_pos - 1] != '|')) {
+      trimmed.insert(out_pos, "|");
+    }
+  }
   if (trimmed.rfind("in:", 0) != 0) {
     throw std::runtime_error("state row must start with in:: " + line);
   }
@@ -175,7 +182,10 @@ ExpectationRow ParseStateRow(const std::string &line,
       row.expected_final_state = expected_scalars;
       row.expected_final_bytes = expected_bytes;
     } else if (segment.rfind("exception:", 0) == 0) {
-      row.expected_exception_kind = Trim(segment.substr(10));
+      auto exception_kind = Trim(segment.substr(10));
+      if (!exception_kind.empty() && ToUpper(exception_kind) != "NONE") {
+        row.expected_exception_kind = std::move(exception_kind);
+      }
     } else if (!segment.empty()) {
       throw std::runtime_error("unknown state row segment: " + segment);
     }

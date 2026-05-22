@@ -7,6 +7,7 @@
 #include "x86tester_parser.hpp"
 #include "xed_metadata.hpp"
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -177,12 +178,25 @@ void WriteMismatchJson(std::ostream *out, const std::filesystem::path &path,
        << ",\"detail\":\"" << JsonEscape(mismatch.detail) << "\"}\n";
 }
 
+void AddInputDirectory(Options &options, const std::filesystem::path &dir) {
+  std::vector<std::filesystem::path> files;
+  for (const auto &entry : std::filesystem::directory_iterator(dir)) {
+    if (entry.is_regular_file() && entry.path().extension() == ".txt") {
+      files.push_back(entry.path());
+    }
+  }
+  std::sort(files.begin(), files.end());
+  options.inputs.insert(options.inputs.end(), files.begin(), files.end());
+}
+
 void PrintUsage(const char *argv0) {
   std::cout
       << "Usage: " << argv0 << " [options] --input 3975WX/xor.txt\n\n"
       << "Options:\n"
       << "  --input <path>             Add one x86Tester file. Positional "
          "paths also work.\n"
+      << "  --input-dir <dir>          Add all .txt files in a corpus "
+         "directory, sorted.\n"
       << "  --mnemonic <csv>           Filter by mnemonic, e.g. xor,add,adc.\n"
       << "  --opcode <csv>             Filter by opcode hex, e.g. 4831D8.\n"
       << "  --limit-states <n>         Stop after selecting n state rows.\n"
@@ -218,6 +232,8 @@ Options ParseOptions(int argc, char **argv) {
       options.self_test = true;
     } else if (arg == "--input") {
       options.inputs.emplace_back(require_value("--input"));
+    } else if (arg == "--input-dir") {
+      AddInputDirectory(options, require_value("--input-dir"));
     } else if (arg == "--mnemonic") {
       for (auto value : SplitCsv(require_value("--mnemonic"))) {
         options.mnemonics.insert(ToLower(std::move(value)));
