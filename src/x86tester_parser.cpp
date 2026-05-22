@@ -6,6 +6,7 @@
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+#include <utility>
 
 namespace remill_tester {
 namespace {
@@ -84,9 +85,28 @@ void AddStateValue(
   }
 }
 
-void ParseStateMap(
-    const std::string &text, std::map<std::string, std::uint64_t> &scalars,
-    std::map<std::string, std::vector<std::uint8_t>> &bytes_map) {
+void AddMemoryInput(std::vector<MemoryCell> &memory, std::uint64_t address,
+                    std::vector<std::uint8_t> bytes) {
+  MemoryCell cell;
+  cell.address = address;
+  cell.bytes = std::move(bytes);
+  cell.permissions = 0;
+  memory.push_back(std::move(cell));
+}
+
+void AddMemoryOutput(std::vector<MemoryExpectation> &memory,
+                     std::uint64_t address, std::vector<std::uint8_t> bytes) {
+  MemoryExpectation expectation;
+  expectation.address = address;
+  expectation.bytes = std::move(bytes);
+  memory.push_back(std::move(expectation));
+}
+
+void ParseStateMap(const std::string &text,
+                   std::map<std::string, std::uint64_t> &scalars,
+                   std::map<std::string, std::vector<std::uint8_t>> &bytes_map,
+                   std::vector<MemoryCell> *input_memory = nullptr,
+                   std::vector<MemoryExpectation> *output_memory = nullptr) {
   const auto trimmed = Trim(text);
   if (trimmed.empty()) {
     return;
@@ -104,6 +124,18 @@ void ParseStateMap(
     }
     const auto key = entry.substr(0, sep);
     const auto hex = entry.substr(sep + 2);
+    if (const auto memory_address = ParseMemoryAddressKey(key)) {
+      auto bytes = ParseHexBytes(hex);
+      if (input_memory != nullptr) {
+        AddMemoryInput(*input_memory, *memory_address, std::move(bytes));
+      } else if (output_memory != nullptr) {
+        AddMemoryOutput(*output_memory, *memory_address, std::move(bytes));
+      } else {
+        throw std::runtime_error("memory key is not valid in this state map: " +
+                                 key);
+      }
+      continue;
+    }
     AddStateValue(key, hex, scalars, bytes_map);
   }
 }
@@ -135,9 +167,11 @@ ExpectationRow ParseStateRow(const std::string &line,
   for (const auto &segment_text : Split(trimmed, '|')) {
     const auto segment = Trim(segment_text);
     if (segment.rfind("in:", 0) == 0) {
-      ParseStateMap(segment.substr(3), row.initial_state, row.initial_bytes);
+      ParseStateMap(segment.substr(3), row.initial_state, row.initial_bytes,
+                    &row.initial_memory, nullptr);
     } else if (segment.rfind("out:", 0) == 0) {
-      ParseStateMap(segment.substr(4), expected_scalars, expected_bytes);
+      ParseStateMap(segment.substr(4), expected_scalars, expected_bytes,
+                    nullptr, &row.expected_memory);
       row.expected_final_state = expected_scalars;
       row.expected_final_bytes = expected_bytes;
     } else if (segment.rfind("exception:", 0) == 0) {
@@ -224,6 +258,22 @@ std::string CanonicalStateKey(std::string key) {
     return "flag";
   }
   return key;
+}
+
+std::optional<std::uint64_t> ParseMemoryAddressKey(const std::string &raw_key) {
+  const auto key = ToLower(Trim(raw_key));
+  std::string address_text;
+  if (key.rfind("mem[", 0) == 0 && !key.empty() && key.back() == ']') {
+    address_text = key.substr(4, key.size() - 5);
+  } else if (key.rfind("mem@", 0) == 0) {
+    address_text = key.substr(4);
+  } else {
+    return std::nullopt;
+  }
+  if (address_text.empty()) {
+    throw std::runtime_error("memory key has empty address: " + raw_key);
+  }
+  return ParseUnsigned(address_text, 0);
 }
 
 ParsedCorpus

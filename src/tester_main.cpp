@@ -166,6 +166,10 @@ void RunSelfTests() {
   Require(ReadLittleEndianScalar(flag_bytes) == 0x44,
           "little-endian flags normalization");
   Require(CanonicalStateKey("flags") == "flag", "flags key normalization");
+  Require(ParseMemoryAddressKey("mem[0x2000]").value_or(0) == 0x2000,
+          "memory key bracket syntax");
+  Require(ParseMemoryAddressKey("mem@8192").value_or(0) == 8192,
+          "memory key at-sign syntax");
   Require((kUserRFlagsMask & kFlagDF) != 0, "DF is part of user flag mask");
   Require((kUserRFlagsMask & kFlagID) != 0, "ID is part of user flag mask");
 

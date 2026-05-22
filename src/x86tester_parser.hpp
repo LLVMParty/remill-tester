@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -21,6 +22,7 @@ std::string Trim(std::string value);
 std::vector<std::uint8_t> ParseHexBytes(const std::string &hex);
 std::uint64_t ReadLittleEndianScalar(const std::vector<std::uint8_t> &bytes);
 std::string CanonicalStateKey(std::string key);
+std::optional<std::uint64_t> ParseMemoryAddressKey(const std::string &key);
 
 class X86TesterParser {
 public:
