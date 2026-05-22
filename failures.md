@@ -6,6 +6,15 @@ This file records currently known non-green areas separately from `TESTED.md`.
 
 No current full-file semantic mismatches are known in the committed tester state.
 
+The earlier `divpd`/`divps`/`divsd`/`divss` NaN-sign issue is fixed by Remill submodule commit `9c88816`:
+
+- Before the fix, limited 20-row samples showed negative quiet-NaN mismatches: `divpd` 11 failures, `divps` 20 failures, `divsd` 9 failures, `divss` 12 failures.
+- After the fix, full Release runs pass:
+  - `divpd.txt`: `62,880 passed, 0 failed, 0 skipped`
+  - `divps.txt`: `62,824 passed, 0 failed, 0 skipped`
+  - `divsd.txt`: `61,944 passed, 0 failed, 0 skipped`
+  - `divss.txt`: `59,912 passed, 0 failed, 0 skipped`
+
 The earlier `movzx`/`movsx`/`movsxd` issue is fixed by Remill submodule commit `d83d754` and parent commit `160f119`:
 
 - `./build-release/remill-tester 3975WX/movzx.txt --execute --stop-on-first-fail`
@@ -24,7 +33,8 @@ These are not counted as semantic failures by the runner (`execution_failed=0`),
 | Area | Example command | Current result | Notes |
 |---|---|---|---|
 | Raw memory-oracle gaps | `./build-release/remill-tester 3975WX/xlat.txt --execute --stop-on-first-fail` | `0 passed, 0 failed, 16 skipped`; `memory_state_missing=16` | Raw `3975WX` rows do not serialize table memory contents. Needs normalized `mem[...]` input/output cells or generator changes. |
-| Remill lift unsupported: packed double min/max | `./build-release/remill-tester 3975WX/maxpd.txt --execute --limit-states 20 --stop-on-first-fail` | `20 skipped`; `unsupported:remill_lift=20` | `maxps`/`minps` full files pass; packed-double variants need Remill lift support/triage. |
+| Remill lift unsupported: packed double min/max | `./build-release/remill-tester 3975WX/maxpd.txt --execute --stop-on-first-fail` | `0 passed, 0 failed, 61,568 skipped`; `unsupported:remill_lift=61,568` | `maxps`, `maxsd`, and `maxss` full files pass; packed-double variants need Remill lift support/triage. |
+| Remill lift unsupported: packed single sqrt | `./build-release/remill-tester 3975WX/sqrtps.txt --execute --stop-on-first-fail` | `0 passed, 0 failed, 64,168 skipped`; `unsupported:remill_lift=64,168` | `sqrtpd`, `sqrtsd`, and `sqrtss` full files pass. |
 | Remill lift unsupported: AES | `./build-release/remill-tester 3975WX/aesenc.txt --execute --limit-states 20 --stop-on-first-fail` | `20 skipped`; `unsupported:remill_lift=20` | Also observed for `aesdec`. |
 | x87/FPU state unsupported | `./build-release/remill-tester 3975WX/fadd.txt --execute --limit-states 5 --stop-on-first-fail` | skipped as `fpu_state_unsupported` | Requires x87 state bridge and safe JIT support before comparing. |
 | Privileged/IO/system instructions | e.g. `cli`, `rdtsc` limited runs | skipped as `privileged_or_io_unsupported` | Avoids host JIT fatal paths and nondeterministic system semantics. |
