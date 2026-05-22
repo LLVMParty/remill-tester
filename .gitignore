@@ -10,3 +10,6 @@ CMakeLists.txt.user
 # LLVM
 *.ll
 *.bc
+
+3975WX/
+.DS_Store
