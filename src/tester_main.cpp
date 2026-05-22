@@ -131,6 +131,10 @@ bool RequiresMemoryOracle(const XedMetadata &metadata) {
   return false;
 }
 
+bool IsFpuUnsupported(const XedMetadata &metadata) {
+  return metadata.extension == "X87" || metadata.category.rfind("X87", 0) == 0;
+}
+
 bool IsPrivilegedOrIoUnsupported(const XedMetadata &metadata) {
   static const std::set<std::string> unsupported_iclasses = {
       "CLI",  "STI",   "HLT",   "IN",     "OUT",    "INSB",  "INSW",
@@ -583,6 +587,12 @@ int Run(const Options &options) {
         }
         if (memory_state_missing) {
           const std::string reason = "memory_state_missing";
+          RecordSkip(summary, reason);
+          WriteSkipJson(skip_report, path, row, reason);
+          continue;
+        }
+        if (IsFpuUnsupported(metadata)) {
+          const std::string reason = "fpu_state_unsupported";
           RecordSkip(summary, reason);
           WriteSkipJson(skip_report, path, row, reason);
           continue;
