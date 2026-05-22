@@ -1,3 +1,4 @@
+#include "comparator.hpp"
 #include "flag_masks.hpp"
 #include "guest_memory.hpp"
 #include "remill_backend.hpp"
@@ -25,6 +26,8 @@ struct Options {
   std::uint64_t limit_states = 0;
   std::uint64_t limit_instructions = 0;
   bool print_instructions = false;
+  bool execute = false;
+  bool stop_on_first_fail = false;
   bool self_test = false;
   bool help = false;
 };
@@ -40,6 +43,9 @@ struct Summary {
   std::uint64_t xed_decode_failures = 0;
   std::uint64_t xed_length_mismatches = 0;
   std::uint64_t memory_rows_without_oracle = 0;
+  std::uint64_t execution_passed = 0;
+  std::uint64_t execution_failed = 0;
+  std::uint64_t execution_skipped = 0;
   std::map<std::string, std::uint64_t> rows_by_mnemonic;
   std::map<std::string, std::uint64_t> groups_by_mnemonic;
   std::map<std::string, std::uint64_t> undefined_flag_mentions;
@@ -91,6 +97,10 @@ void PrintUsage(const char *argv0) {
          "groups.\n"
       << "  --print-instructions       Print one XED metadata line per "
          "selected opcode/address.\n"
+      << "  --execute                  Lift/JIT/run selected rows with Remill "
+         "and compare sparse outputs.\n"
+      << "  --stop-on-first-fail       Stop after the first execution "
+         "mismatch.\n"
       << "  --self-test                Run parser/XED smoke tests.\n"
       << "  --help                     Show this help.\n";
 }
@@ -127,6 +137,10 @@ Options ParseOptions(int argc, char **argv) {
           std::stoull(require_value("--limit-instructions"));
     } else if (arg == "--print-instructions") {
       options.print_instructions = true;
+    } else if (arg == "--execute") {
+      options.execute = true;
+    } else if (arg == "--stop-on-first-fail") {
+      options.stop_on_first_fail = true;
     } else if (!arg.empty() && arg[0] == '-') {
       throw std::runtime_error("unknown option: " + arg);
     } else {
@@ -288,6 +302,7 @@ int Run(const Options &options) {
 
   X86TesterParser parser;
   XedDecoder decoder;
+  RemillBackend remill_backend;
   Summary summary;
   std::map<std::string, XedMetadata> decode_cache;
   std::set<std::string> selected_groups;
@@ -315,6 +330,12 @@ int Run(const Options &options) {
         continue;
       }
 
+      if (options.limit_states != 0 &&
+          summary.selected_rows >= options.limit_states) {
+        stop = true;
+        break;
+      }
+
       const auto group_key = InstructionGroupKey(path, row);
       if (selected_groups.count(group_key) == 0) {
         if (options.limit_instructions != 0 &&
@@ -325,12 +346,6 @@ int Run(const Options &options) {
         selected_groups.insert(group_key);
         ++summary.selected_instruction_groups;
         ++summary.groups_by_mnemonic[mnemonic];
-      }
-
-      if (options.limit_states != 0 &&
-          summary.selected_rows >= options.limit_states) {
-        stop = true;
-        break;
       }
 
       const auto decode_key = DecodeKey(row);
@@ -357,9 +372,51 @@ int Run(const Options &options) {
       for (const auto &name : FlagNamesFromMask(metadata.undefined_flags)) {
         ++summary.undefined_flag_mentions[name];
       }
-      if (metadata.ok && !metadata.memory_operands.empty() &&
-          row.initial_memory.empty()) {
+      const bool memory_state_missing = metadata.ok &&
+                                        !metadata.memory_operands.empty() &&
+                                        row.initial_memory.empty();
+      if (memory_state_missing) {
         ++summary.memory_rows_without_oracle;
+      }
+
+      if (options.execute) {
+        if (!metadata.ok ||
+            metadata.length != ParseHexBytes(row.opcode).size()) {
+          ++summary.execution_skipped;
+          continue;
+        }
+        if (row.expected_exception_kind.has_value()) {
+          ++summary.execution_skipped;
+          continue;
+        }
+        if (memory_state_missing) {
+          ++summary.execution_skipped;
+          continue;
+        }
+
+        std::vector<std::string> final_state_keys;
+        if (row.expected_final_state.has_value()) {
+          for (const auto &[key, _] : *row.expected_final_state) {
+            final_state_keys.push_back(key);
+          }
+        }
+
+        const auto execution_result =
+            remill_backend.RunCase(row, final_state_keys);
+        const auto comparison =
+            CompareExecutionResult(row, metadata, execution_result);
+        if (comparison.passed) {
+          ++summary.execution_passed;
+        } else {
+          ++summary.execution_failed;
+          for (const auto &mismatch : comparison.mismatches) {
+            std::cerr << "mismatch: " << FormatMismatch(row, mismatch) << '\n';
+          }
+          if (options.stop_on_first_fail) {
+            stop = true;
+            break;
+          }
+        }
       }
     }
   }
@@ -379,6 +436,14 @@ int Run(const Options &options) {
   std::cout << "summary.memory_rows_without_oracle="
             << summary.memory_rows_without_oracle << '\n';
   std::cout << "summary.parse_warnings=" << summary.parse_warnings << '\n';
+  if (options.execute) {
+    std::cout << "summary.execution_passed=" << summary.execution_passed
+              << '\n';
+    std::cout << "summary.execution_failed=" << summary.execution_failed
+              << '\n';
+    std::cout << "summary.execution_skipped=" << summary.execution_skipped
+              << '\n';
+  }
 
   if (!summary.rows_by_mnemonic.empty()) {
     std::cout << "summary.rows_by_mnemonic:";
@@ -396,7 +461,9 @@ int Run(const Options &options) {
     std::cout << '\n';
   }
 
-  return summary.xed_decode_failures == 0 && summary.xed_length_mismatches == 0
+  return summary.xed_decode_failures == 0 &&
+                 summary.xed_length_mismatches == 0 &&
+                 summary.execution_failed == 0
              ? 0
              : 1;
 }

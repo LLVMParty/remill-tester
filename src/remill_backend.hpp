@@ -33,10 +33,7 @@ private:
   bool EnsureInitialized(std::string &error);
   CompiledInstruction *Compile(const ExpectationRow &row, std::string &error);
 
-  llvm::orc::ThreadSafeContext context_;
-  std::unique_ptr<const remill::Arch> arch_;
-  const remill::IntrinsicTable *intrinsics_ = nullptr;
-  std::unique_ptr<llvm::orc::LLJIT> jit_;
+  bool initialized_ = false;
   std::uint64_t next_function_id_ = 0;
   std::map<std::string, std::unique_ptr<CompiledInstruction>> cache_;
 };

@@ -104,6 +104,7 @@ void InitializeLlvmNativeTargetOnce() {
 struct RemillBackend::CompiledInstruction {
   std::string name;
   LiftedFunction function = nullptr;
+  std::unique_ptr<llvm::orc::LLJIT> jit;
 };
 
 RemillBackend::RemillBackend() = default;
@@ -182,47 +183,13 @@ RemillBackend::RunCase(const ExpectationRow &row,
 }
 
 bool RemillBackend::EnsureInitialized(std::string &error) {
-  if (jit_ && arch_) {
-    return true;
+  if (!initialized_) {
+    InitializeLlvmNativeTargetOnce();
+    RegisterRemillIntrinsicSymbols();
+    google::InitGoogleLogging("remill-tester");
+    initialized_ = true;
   }
-
-  InitializeLlvmNativeTargetOnce();
-  RegisterRemillIntrinsicSymbols();
-
-  google::InitGoogleLogging("remill-tester");
-
-  context_ =
-      llvm::orc::ThreadSafeContext(std::make_unique<llvm::LLVMContext>());
-  auto *llvm_context = context_.withContextDo(
-      [](llvm::LLVMContext *context) -> llvm::LLVMContext * {
-        return context;
-      });
-  if (llvm_context == nullptr) {
-    error = "failed to create LLVM context";
-    return false;
-  }
-
-  arch_ = remill::Arch::Get(*llvm_context, "linux", "amd64");
-  if (!arch_) {
-    error = "failed to create Remill linux/amd64 architecture";
-    return false;
-  }
-
-  auto jit_or_error = llvm::orc::LLJITBuilder().create();
-  if (!jit_or_error) {
-    error = ToString(jit_or_error.takeError());
-    return false;
-  }
-  jit_ = std::move(*jit_or_error);
-
-  auto generator =
-      llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
-          jit_->getDataLayout().getGlobalPrefix());
-  if (!generator) {
-    error = ToString(generator.takeError());
-    return false;
-  }
-  jit_->getMainJITDylib().addGenerator(std::move(*generator));
+  (void)error;
   return true;
 }
 
@@ -233,13 +200,43 @@ RemillBackend::Compile(const ExpectationRow &row, std::string &error) {
     return it->second.get();
   }
 
-  auto semantics = remill::LoadArchSemantics(arch_.get());
+  llvm::orc::ThreadSafeContext context(std::make_unique<llvm::LLVMContext>());
+  auto *llvm_context = context.withContextDo(
+      [](llvm::LLVMContext *ctx) -> llvm::LLVMContext * { return ctx; });
+  if (llvm_context == nullptr) {
+    error = "failed to create LLVM context";
+    return nullptr;
+  }
+
+  auto arch = remill::Arch::Get(*llvm_context, "linux", "amd64");
+  if (!arch) {
+    error = "failed to create Remill linux/amd64 architecture";
+    return nullptr;
+  }
+
+  auto jit_or_error = llvm::orc::LLJITBuilder().create();
+  if (!jit_or_error) {
+    error = ToString(jit_or_error.takeError());
+    return nullptr;
+  }
+  auto jit = std::move(*jit_or_error);
+
+  auto generator =
+      llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
+          jit->getDataLayout().getGlobalPrefix());
+  if (!generator) {
+    error = ToString(generator.takeError());
+    return nullptr;
+  }
+  jit->getMainJITDylib().addGenerator(std::move(*generator));
+
+  auto semantics = remill::LoadArchSemantics(arch.get());
   if (!semantics) {
     error = "failed to load Remill semantics";
     return nullptr;
   }
-  intrinsics_ = arch_->GetInstrinsicTable();
-  if (intrinsics_ == nullptr) {
+  const auto *intrinsics = arch->GetInstrinsicTable();
+  if (intrinsics == nullptr) {
     error = "failed to create Remill intrinsic table";
     return nullptr;
   }
@@ -249,15 +246,15 @@ RemillBackend::Compile(const ExpectationRow &row, std::string &error) {
       reinterpret_cast<const char *>(opcode_bytes.data()), opcode_bytes.size());
 
   remill::Instruction instruction;
-  remill::DecodingContext decoding_context = arch_->CreateInitialContext();
-  if (!arch_->DecodeInstruction(row.address, instruction_bytes, instruction,
-                                decoding_context)) {
+  remill::DecodingContext decoding_context = arch->CreateInitialContext();
+  if (!arch->DecodeInstruction(row.address, instruction_bytes, instruction,
+                               decoding_context)) {
     error = "Remill failed to decode opcode " + row.opcode;
     return nullptr;
   }
 
   const auto function_name = FunctionName(next_function_id_++, row);
-  auto *function = arch_->DefineLiftedFunction(function_name, semantics.get());
+  auto *function = arch->DefineLiftedFunction(function_name, semantics.get());
   auto *block = &function->getEntryBlock();
   auto lifter = instruction.GetLifter();
   const auto status = lifter->LiftIntoBlock(instruction, block);
@@ -267,20 +264,20 @@ RemillBackend::Compile(const ExpectationRow &row, std::string &error) {
   }
 
   llvm::IRBuilder<> ir(block);
-  ir.CreateRet(remill::LoadMemoryPointer(block, *intrinsics_));
-  remill::OptimizeModule(arch_.get(), semantics.get(), {function});
+  ir.CreateRet(remill::LoadMemoryPointer(block, *intrinsics));
+  remill::OptimizeModule(arch.get(), semantics.get(), {function});
   PruneModuleForJit(*semantics, function);
-  semantics->setDataLayout(jit_->getDataLayout());
+  semantics->setDataLayout(jit->getDataLayout());
   semantics->setTargetTriple(llvm::Triple(llvm::sys::getProcessTriple()));
 
-  auto add_error = jit_->addIRModule(
-      llvm::orc::ThreadSafeModule(std::move(semantics), context_));
+  auto add_error = jit->addIRModule(
+      llvm::orc::ThreadSafeModule(std::move(semantics), context));
   if (add_error) {
     error = ToString(std::move(add_error));
     return nullptr;
   }
 
-  auto symbol = jit_->lookup(function_name);
+  auto symbol = jit->lookup(function_name);
   if (!symbol) {
     error = ToString(symbol.takeError());
     return nullptr;
@@ -289,6 +286,7 @@ RemillBackend::Compile(const ExpectationRow &row, std::string &error) {
   auto compiled = std::make_unique<CompiledInstruction>();
   compiled->name = function_name;
   compiled->function = symbol->toPtr<LiftedFunction>();
+  compiled->jit = std::move(jit);
   auto *compiled_ptr = compiled.get();
   cache_[key] = std::move(compiled);
   return compiled_ptr;

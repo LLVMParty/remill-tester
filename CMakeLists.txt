@@ -116,6 +116,8 @@ endif()
 # Target: remill-tester
 set(remill-tester_SOURCES
 	cmake.toml
+	"src/comparator.cpp"
+	"src/comparator.hpp"
 	"src/expectation.hpp"
 	"src/flag_masks.cpp"
 	"src/flag_masks.hpp"

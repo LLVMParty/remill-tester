@@ -50,6 +50,8 @@ endif()
 type = "executable"
 sources = [
     "src/tester_main.cpp",
+    "src/comparator.cpp",
+    "src/comparator.hpp",
     "src/x86tester_parser.cpp",
     "src/x86tester_parser.hpp",
     "src/xed_metadata.cpp",
