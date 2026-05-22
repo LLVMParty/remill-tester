@@ -100,6 +100,8 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/cmovp.txt` | `./build-release/remill-tester 3975WX/cmovp.txt --execute --stop-on-first-fail` | 56,352 passed |
 | `3975WX/cmovs.txt` | `./build-release/remill-tester 3975WX/cmovs.txt --execute --stop-on-first-fail` | 56,704 passed |
 | `3975WX/cmovz.txt` | `./build-release/remill-tester 3975WX/cmovz.txt --execute --stop-on-first-fail` | 56,568 passed |
+| `3975WX/andn.txt` | `./build-release/remill-tester 3975WX/andn.txt --execute --stop-on-first-fail` | 744,816 passed |
+| `3975WX/bzhi.txt` | `./build-release/remill-tester 3975WX/bzhi.txt --execute --stop-on-first-fail` | 766,328 passed |
 | `3975WX/lzcnt.txt` | `./build-release/remill-tester 3975WX/lzcnt.txt --execute --stop-on-first-fail` | 34,400 passed |
 | `3975WX/tzcnt.txt` | `./build-release/remill-tester 3975WX/tzcnt.txt --execute --stop-on-first-fail` | 34,104 passed |
 | `3975WX/blsi.txt` | `./build-release/remill-tester 3975WX/blsi.txt --execute --stop-on-first-fail` | 49,464 passed |
