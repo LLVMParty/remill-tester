@@ -157,3 +157,4 @@ target_link_libraries(remill-tester PRIVATE
     remill
     "${CMAKE_SOURCE_DIR}/dependencies/install/lib/libxed.a"
 )
+add_dependencies(remill-tester amd64)
