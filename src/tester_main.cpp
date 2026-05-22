@@ -540,12 +540,6 @@ int Run(const Options &options) {
           WriteSkipJson(skip_report, path, row, reason);
           continue;
         }
-        if (row.expected_exception_kind.has_value()) {
-          const std::string reason = "expected_exception_unsupported";
-          RecordSkip(summary, reason);
-          WriteSkipJson(skip_report, path, row, reason);
-          continue;
-        }
         if (memory_state_missing) {
           const std::string reason = "memory_state_missing";
           RecordSkip(summary, reason);

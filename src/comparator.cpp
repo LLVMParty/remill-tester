@@ -62,6 +62,14 @@ CompareExecutionResult(const ExpectationRow &row, const XedMetadata &metadata,
                         "expected exception " + *row.expected_exception_kind +
                             ", got " +
                             OutcomeClassName(execution_result.outcome_class)});
+    } else if (execution_result.exception_detail.has_value() &&
+               *execution_result.exception_detail !=
+                   *row.expected_exception_kind) {
+      AddMismatch(comparison,
+                  FieldMismatch{"exception", 0, 0, 0,
+                                "expected exception " +
+                                    *row.expected_exception_kind + ", got " +
+                                    *execution_result.exception_detail});
     }
     return comparison;
   }

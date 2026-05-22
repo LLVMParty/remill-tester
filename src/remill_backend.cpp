@@ -177,10 +177,18 @@ RemillBackend::RunCase(const ExpectationRow &row,
 
   if (!memory.ok()) {
     const auto fault = memory.last_fault();
-    result.outcome_class = fault && fault->kind == MemoryFaultKind::Unsupported
-                               ? OutcomeClass::Unsupported
-                               : OutcomeClass::Exception;
-    if (fault) {
+    const bool remill_error = fault &&
+                              fault->kind == MemoryFaultKind::Unsupported &&
+                              fault->detail == "__remill_error";
+    result.outcome_class =
+        remill_error && row.expected_exception_kind.has_value()
+            ? OutcomeClass::Exception
+            : (fault && fault->kind == MemoryFaultKind::Unsupported
+                   ? OutcomeClass::Unsupported
+                   : OutcomeClass::Exception);
+    if (remill_error && row.expected_exception_kind.has_value()) {
+      result.exception_detail = *row.expected_exception_kind;
+    } else if (fault) {
       std::ostringstream detail;
       detail << fault->operation << " fault at 0x" << std::hex << fault->address
              << ": " << fault->detail;
