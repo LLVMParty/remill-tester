@@ -40,6 +40,13 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/imul.txt` | `./build/remill-tester 3975WX/imul.txt --execute --stop-on-first-fail` | 998,329 passed |
 | `3975WX/mul.txt` | `./build/remill-tester 3975WX/mul.txt --execute --stop-on-first-fail` | 7,974 passed |
 | `3975WX/neg.txt` | `./build/remill-tester 3975WX/neg.txt --execute --stop-on-first-fail` | 3,240 passed |
+| `3975WX/bsf.txt` | `./build/remill-tester 3975WX/bsf.txt --execute --stop-on-first-fail` | 37,048 passed |
+| `3975WX/bsr.txt` | `./build/remill-tester 3975WX/bsr.txt --execute --stop-on-first-fail` | 38,624 passed |
+| `3975WX/bt.txt` | `./build/remill-tester 3975WX/bt.txt --execute --stop-on-first-fail` | 1,536 passed |
+| `3975WX/bts.txt` | `./build/remill-tester 3975WX/bts.txt --execute --stop-on-first-fail` | 77,696 passed |
+| `3975WX/btr.txt` | `./build/remill-tester 3975WX/btr.txt --execute --stop-on-first-fail` | 76,896 passed |
+| `3975WX/btc.txt` | `./build/remill-tester 3975WX/btc.txt --execute --stop-on-first-fail` | 78,984 passed |
+| `3975WX/bswap.txt` | `./build/remill-tester 3975WX/bswap.txt --execute --stop-on-first-fail` | 2,224 passed |
 
 ## Current limited smoke runs
 
@@ -51,13 +58,6 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/cmovnz.txt` | `./build/remill-tester 3975WX/cmovnz.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
 | `3975WX/setz.txt` | `./build/remill-tester 3975WX/setz.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
 | `3975WX/setnz.txt` | `./build/remill-tester 3975WX/setnz.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
-| `3975WX/bswap.txt` | `./build/remill-tester 3975WX/bswap.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
-| `3975WX/bsf.txt` | `./build/remill-tester 3975WX/bsf.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
-| `3975WX/bsr.txt` | `./build/remill-tester 3975WX/bsr.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
-| `3975WX/bt.txt` | `./build/remill-tester 3975WX/bt.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
-| `3975WX/bts.txt` | `./build/remill-tester 3975WX/bts.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
-| `3975WX/btr.txt` | `./build/remill-tester 3975WX/btr.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
-| `3975WX/btc.txt` | `./build/remill-tester 3975WX/btc.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
 | `3975WX/xchg.txt` | `./build/remill-tester 3975WX/xchg.txt --execute --limit-states 100 --stop-on-first-fail` | 100 passed |
 
 ## Current known mismatches
