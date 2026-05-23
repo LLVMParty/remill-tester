@@ -8,10 +8,12 @@
 #include "xed_metadata.hpp"
 
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <optional>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -236,7 +238,91 @@ bool IsEnvironmentReadUnsupported(const XedMetadata &metadata) {
   return unsupported_iclasses.count(metadata.iclass) != 0;
 }
 
+std::optional<std::string> CanonicalScalarOperand(std::string operand) {
+  auto name = ToLower(Trim(std::move(operand)));
+  if (name.empty() || name.find('[') != std::string::npos) {
+    return std::nullopt;
+  }
+
+  static const std::map<std::string, std::string> aliases = {
+      {"rax", "rax"}, {"eax", "rax"}, {"ax", "rax"},
+      {"rbx", "rbx"}, {"ebx", "rbx"}, {"bx", "rbx"},
+      {"rcx", "rcx"}, {"ecx", "rcx"}, {"cx", "rcx"},
+      {"rdx", "rdx"}, {"edx", "rdx"}, {"dx", "rdx"},
+      {"rsi", "rsi"}, {"esi", "rsi"}, {"si", "rsi"},
+      {"rdi", "rdi"}, {"edi", "rdi"}, {"di", "rdi"},
+      {"rsp", "rsp"}, {"esp", "rsp"}, {"sp", "rsp"},
+      {"rbp", "rbp"}, {"ebp", "rbp"}, {"bp", "rbp"},
+  };
+  if (const auto it = aliases.find(name); it != aliases.end()) {
+    return it->second;
+  }
+
+  if (name.size() >= 2u && name[0] == 'r' &&
+      std::isdigit(static_cast<unsigned char>(name[1]))) {
+    std::size_t pos = 1;
+    while (pos < name.size() &&
+           std::isdigit(static_cast<unsigned char>(name[pos]))) {
+      ++pos;
+    }
+    if (pos == 1 || pos > 3) {
+      return std::nullopt;
+    }
+    const auto suffix = name.substr(pos);
+    if (suffix.empty() || suffix == "d" || suffix == "w") {
+      return name.substr(0, pos);
+    }
+  }
+
+  return std::nullopt;
+}
+
+unsigned DestinationWidthBits(const std::string &instruction) {
+  const auto mnemonic_end = instruction.find(' ');
+  if (mnemonic_end == std::string::npos) {
+    return 0;
+  }
+  auto operands = instruction.substr(mnemonic_end + 1u);
+  const auto comma = operands.find(',');
+  auto dest = ToLower(Trim(operands.substr(0, comma)));
+
+  static const std::set<std::string> gpr16 = {"ax", "bx", "cx", "dx",
+                                             "si", "di", "sp", "bp"};
+  if (gpr16.count(dest) != 0 ||
+      (dest.size() >= 3u && dest[0] == 'r' && dest.back() == 'w')) {
+    return 16;
+  }
+  if ((dest.size() == 3u && dest[0] == 'e') ||
+      (dest.size() >= 3u && dest[0] == 'r' && dest.back() == 'd')) {
+    return 32;
+  }
+  return 64;
+}
+
+std::optional<std::uint16_t> DescriptorSourceSelector(
+    const ExpectationRow &row) {
+  const auto comma = row.instruction.find(',');
+  if (comma == std::string::npos) {
+    return std::nullopt;
+  }
+  auto source = Trim(row.instruction.substr(comma + 1u));
+  if (const auto next_comma = source.find(','); next_comma != std::string::npos) {
+    source = Trim(source.substr(0, next_comma));
+  }
+  const auto key = CanonicalScalarOperand(std::move(source));
+  if (!key.has_value()) {
+    return std::nullopt;
+  }
+  if (const auto it = row.initial_state.find(*key); it != row.initial_state.end()) {
+    return static_cast<std::uint16_t>(it->second & 0xffffu);
+  }
+  return std::nullopt;
+}
+
 bool HasVariableDescriptorSelector(const ExpectationRow &row) {
+  if (const auto selector = DescriptorSourceSelector(row)) {
+    return *selector == 0x50u || *selector == 0x51u;
+  }
   for (const auto &[raw_key, value] : row.initial_state) {
     const auto key = CanonicalStateKey(raw_key);
     if (!IsScalarRegister(key)) {
@@ -256,7 +342,16 @@ bool IsDescriptorStateUnsupported(const XedMetadata &metadata,
     // The raw 3975WX corpus includes a few rows for per-CPU/system descriptor
     // selectors (e.g. TSS/LDT selectors 0x50/0x51) whose access rights/limits
     // vary with host descriptor-table state that is not serialized in the row.
-    // Fixed user code/data selectors are modeled by Remill and can run.
+    // The low 16 bits of LAR(selector 0x50) are stable in 16-bit destinations;
+    // wider LAR and all LSL variable-selector rows still require descriptor
+    // table state that the corpus does not serialize.
+    if (metadata.iclass == "LAR") {
+      if (const auto selector = DescriptorSourceSelector(row)) {
+        if (*selector == 0x50u && DestinationWidthBits(row.instruction) == 16u) {
+          return false;
+        }
+      }
+    }
     return HasVariableDescriptorSelector(row);
   }
   return false;
