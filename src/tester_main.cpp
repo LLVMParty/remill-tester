@@ -131,7 +131,49 @@ bool RequiresMemoryOracle(const XedMetadata &metadata) {
   return false;
 }
 
-bool IsFpuUnsupported(const XedMetadata &metadata) {
+bool IsX87StackRegister(const std::string &key) {
+  if (key.size() != 3 || key[0] != 's' || key[1] != 't') {
+    return false;
+  }
+  return key[2] >= '0' && key[2] <= '7';
+}
+
+bool IsUnsupportedX87StackValue(const std::vector<std::uint8_t> &bytes) {
+  if (bytes.size() != 10) {
+    return false;
+  }
+  std::uint64_t significand = 0;
+  for (std::size_t i = 0; i < 8; ++i) {
+    significand |= static_cast<std::uint64_t>(bytes[i]) << (i * 8u);
+  }
+  const auto exponent = static_cast<std::uint16_t>(
+      (static_cast<std::uint16_t>(bytes[8]) |
+       (static_cast<std::uint16_t>(bytes[9]) << 8u)) &
+      0x7fffu);
+  const bool integer_bit = (significand >> 63u) != 0u;
+  if (exponent == 0u) {
+    return significand != 0u;
+  }
+  if (exponent != 0x7fffu && !integer_bit) {
+    return true;
+  }
+  return false;
+}
+
+bool HasUnsupportedX87StackValue(const ExpectationRow &row) {
+  for (const auto &[raw_key, bytes] : row.initial_bytes) {
+    const auto key = CanonicalStateKey(raw_key);
+    if (IsX87StackRegister(key) && IsUnsupportedX87StackValue(bytes)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool IsFpuUnsupported(const XedMetadata &metadata, const ExpectationRow &row) {
+  if (metadata.iclass == "FXCH" || metadata.iclass.rfind("FCMOV", 0) == 0) {
+    return HasUnsupportedX87StackValue(row);
+  }
   if (metadata.iclass == "FNSTSW" || metadata.iclass == "FNINIT" ||
       metadata.iclass == "FNCLEX" || metadata.iclass == "FDECSTP" ||
       metadata.iclass == "FINCSTP" || metadata.iclass == "FFREE" ||
@@ -716,7 +758,7 @@ int Run(const Options &options) {
           WriteSkipJson(skip_report, path, row, reason);
           continue;
         }
-        if (IsFpuUnsupported(metadata)) {
+        if (IsFpuUnsupported(metadata, row)) {
           const std::string reason = "fpu_state_unsupported";
           RecordSkip(summary, reason);
           WriteSkipJson(skip_report, path, row, reason);
