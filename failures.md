@@ -118,6 +118,13 @@ The earlier `shld`/`shrd` 16-bit wide-count mismatch is fixed by Remill submodul
   - `shld.txt`: `585,136 passed, 0 failed, 0 skipped`
   - `shrd.txt`: `580,799 passed, 0 failed, 0 skipped`
 
+The earlier `adcx`/`adox` lift gaps are fixed by Remill submodule commit `56f21a0`:
+
+- Before the fix, limited 20-row samples skipped as `unsupported:remill_lift`.
+- After the fix, full Release runs pass:
+  - `adcx.txt`: `49,216 passed, 0 failed, 0 skipped`
+  - `adox.txt`: `49,552 passed, 0 failed, 0 skipped`
+
 The earlier `movzx`/`movsx`/`movsxd` issue is fixed by Remill submodule commit `d83d754` and parent commit `160f119`:
 
 - `./build-release/remill-tester 3975WX/movzx.txt --execute --stop-on-first-fail`

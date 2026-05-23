@@ -12,6 +12,8 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/xor.txt` | `./build/remill-tester 3975WX/xor.txt --execute --stop-on-first-fail` | 114,672 passed |
 | `3975WX/add.txt` | `./build/remill-tester 3975WX/add.txt --execute --stop-on-first-fail` | 117,756 passed |
 | `3975WX/adc.txt` | `./build/remill-tester 3975WX/adc.txt --execute --stop-on-first-fail` | 127,260 passed |
+| `3975WX/adcx.txt` | `./build-release/remill-tester 3975WX/adcx.txt --execute --stop-on-first-fail` | 49,216 passed |
+| `3975WX/adox.txt` | `./build-release/remill-tester 3975WX/adox.txt --execute --stop-on-first-fail` | 49,552 passed |
 | `3975WX/cmp.txt` | `./build/remill-tester 3975WX/cmp.txt --execute --stop-on-first-fail` | 12,432 passed |
 | `3975WX/and.txt` | `./build/remill-tester 3975WX/and.txt --execute --stop-on-first-fail` | 94,100 passed |
 | `3975WX/or.txt` | `./build/remill-tester 3975WX/or.txt --execute --stop-on-first-fail` | 105,276 passed |
