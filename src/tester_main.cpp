@@ -181,8 +181,8 @@ bool IsPrivilegedOrIoUnsupported(const XedMetadata &metadata) {
 
 bool IsEnvironmentReadUnsupported(const XedMetadata &metadata) {
   static const std::set<std::string> unsupported_iclasses = {
-      "RDTSC", "RDTSCP", "RDPMC", "RDPRU",  "RDRAND", "RDSEED",
-      "RDPID", "RDGSBASE", "RDSSPD", "RDSSPQ"};
+      "RDTSC", "RDTSCP", "RDPMC", "RDPRU", "RDRAND",
+      "RDSEED", "RDPID", "RDGSBASE"};
   return unsupported_iclasses.count(metadata.iclass) != 0;
 }
 
