@@ -35,6 +35,15 @@ The earlier `movmskpd` lift gap is fixed by Remill submodule commit `5a1b388`:
   - `movmskpd.txt`: `25,600 passed, 0 failed, 0 skipped`
   - `movmskps.txt`: `26,368 passed, 0 failed, 0 skipped`
 
+The earlier `hsubpd`/`hsubps` lift gaps are fixed by Remill submodule commit `37d8e80`:
+
+- Before the fix, limited 20-row samples skipped as `unsupported:remill_lift`.
+- After the fix, full Release runs pass:
+  - `hsubpd.txt`: `63,992 passed, 0 failed, 0 skipped`
+  - `hsubps.txt`: `63,408 passed, 0 failed, 0 skipped`
+  - `haddpd.txt`: `62,816 passed, 0 failed, 0 skipped`
+  - `haddps.txt`: `63,064 passed, 0 failed, 0 skipped`
+
 The earlier `movzx`/`movsx`/`movsxd` issue is fixed by Remill submodule commit `d83d754` and parent commit `160f119`:
 
 - `./build-release/remill-tester 3975WX/movzx.txt --execute --stop-on-first-fail`

@@ -29,6 +29,10 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/addss.txt` | `./build/remill-tester 3975WX/addss.txt --execute --stop-on-first-fail` | 60,312 passed |
 | `3975WX/addsubpd.txt` | `./build/remill-tester 3975WX/addsubpd.txt --execute --stop-on-first-fail` | 62,272 passed |
 | `3975WX/addsubps.txt` | `./build/remill-tester 3975WX/addsubps.txt --execute --stop-on-first-fail` | 63,472 passed |
+| `3975WX/haddpd.txt` | `./build-release/remill-tester 3975WX/haddpd.txt --execute --stop-on-first-fail` | 62,816 passed |
+| `3975WX/haddps.txt` | `./build-release/remill-tester 3975WX/haddps.txt --execute --stop-on-first-fail` | 63,064 passed |
+| `3975WX/hsubpd.txt` | `./build-release/remill-tester 3975WX/hsubpd.txt --execute --stop-on-first-fail` | 63,992 passed |
+| `3975WX/hsubps.txt` | `./build-release/remill-tester 3975WX/hsubps.txt --execute --stop-on-first-fail` | 63,408 passed |
 | `3975WX/subpd.txt` | `./build-release/remill-tester 3975WX/subpd.txt --execute --stop-on-first-fail` | 62,688 passed |
 | `3975WX/subps.txt` | `./build-release/remill-tester 3975WX/subps.txt --execute --stop-on-first-fail` | 62,712 passed |
 | `3975WX/subsd.txt` | `./build-release/remill-tester 3975WX/subsd.txt --execute --stop-on-first-fail` | 60,408 passed |
