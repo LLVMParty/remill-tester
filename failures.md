@@ -130,6 +130,11 @@ The earlier `mpsadbw` lift gap is fixed by Remill submodule commit `7db212d`:
 - Before the fix, a limited 20-row sample skipped as `unsupported:remill_lift`.
 - After the fix, full Release `mpsadbw.txt` passes: `470,232 passed, 0 failed, 0 skipped`.
 
+The earlier `insertq` lift gap is fixed by Remill submodule commit `4277839`:
+
+- Before the fix, `insertq.txt` had `unsupported:remill_lift` skips for immediate-control and register-control SSE4A forms.
+- After the fix, full Release `insertq.txt` passes: `3,741,176 passed, 0 failed, 0 skipped`.
+
 The earlier `movzx`/`movsx`/`movsxd` issue is fixed by Remill submodule commit `d83d754` and parent commit `160f119`:
 
 - `./build-release/remill-tester 3975WX/movzx.txt --execute --stop-on-first-fail`
