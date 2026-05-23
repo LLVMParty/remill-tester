@@ -55,6 +55,10 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/andps.txt` | `./build/remill-tester 3975WX/andps.txt --execute --stop-on-first-fail` | 52,048 passed |
 | `3975WX/andnpd.txt` | `./build/remill-tester 3975WX/andnpd.txt --execute --stop-on-first-fail` | 55,072 passed |
 | `3975WX/andnps.txt` | `./build/remill-tester 3975WX/andnps.txt --execute --stop-on-first-fail` | 54,288 passed |
+| `3975WX/orpd.txt` | `./build-release/remill-tester 3975WX/orpd.txt --execute --stop-on-first-fail` | 64,224 passed |
+| `3975WX/orps.txt` | `./build-release/remill-tester 3975WX/orps.txt --execute --stop-on-first-fail` | 64,128 passed |
+| `3975WX/xorpd.txt` | `./build-release/remill-tester 3975WX/xorpd.txt --execute --stop-on-first-fail` | 62,784 passed |
+| `3975WX/xorps.txt` | `./build-release/remill-tester 3975WX/xorps.txt --execute --stop-on-first-fail` | 62,512 passed |
 | `3975WX/maxps.txt` | `./build/remill-tester 3975WX/maxps.txt --execute --stop-on-first-fail` | 61,824 passed |
 | `3975WX/minps.txt` | `./build/remill-tester 3975WX/minps.txt --execute --stop-on-first-fail` | 61,272 passed |
 | `3975WX/div.txt` | `./build/remill-tester 3975WX/div.txt --execute --stop-on-first-fail` | 7,292 passed, including expected exceptions |
@@ -75,8 +79,25 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/movzx.txt` | `./build-release/remill-tester 3975WX/movzx.txt --execute --stop-on-first-fail` | 75,022 passed |
 | `3975WX/movsx.txt` | `./build-release/remill-tester 3975WX/movsx.txt --execute --stop-on-first-fail` | 113,322 passed |
 | `3975WX/movsxd.txt` | `./build-release/remill-tester 3975WX/movsxd.txt --execute --stop-on-first-fail` | 54,256 passed |
+| `3975WX/movapd.txt` | `./build-release/remill-tester 3975WX/movapd.txt --execute --stop-on-first-fail` | 59,432 passed |
+| `3975WX/movaps.txt` | `./build-release/remill-tester 3975WX/movaps.txt --execute --stop-on-first-fail` | 59,576 passed |
+| `3975WX/movupd.txt` | `./build-release/remill-tester 3975WX/movupd.txt --execute --stop-on-first-fail` | 59,984 passed |
+| `3975WX/movups.txt` | `./build-release/remill-tester 3975WX/movups.txt --execute --stop-on-first-fail` | 59,256 passed |
+| `3975WX/movdqa.txt` | `./build-release/remill-tester 3975WX/movdqa.txt --execute --stop-on-first-fail` | 60,176 passed |
+| `3975WX/movdqu.txt` | `./build-release/remill-tester 3975WX/movdqu.txt --execute --stop-on-first-fail` | 59,152 passed |
+| `3975WX/movhlps.txt` | `./build-release/remill-tester 3975WX/movhlps.txt --execute --stop-on-first-fail` | 59,288 passed |
+| `3975WX/movlhps.txt` | `./build-release/remill-tester 3975WX/movlhps.txt --execute --stop-on-first-fail` | 60,504 passed |
+| `3975WX/movshdup.txt` | `./build-release/remill-tester 3975WX/movshdup.txt --execute --stop-on-first-fail` | 59,568 passed |
+| `3975WX/movsldup.txt` | `./build-release/remill-tester 3975WX/movsldup.txt --execute --stop-on-first-fail` | 58,840 passed |
+| `3975WX/movddup.txt` | `./build-release/remill-tester 3975WX/movddup.txt --execute --stop-on-first-fail` | 59,144 passed |
 | `3975WX/movmskpd.txt` | `./build-release/remill-tester 3975WX/movmskpd.txt --execute --stop-on-first-fail` | 25,600 passed |
 | `3975WX/movmskps.txt` | `./build-release/remill-tester 3975WX/movmskps.txt --execute --stop-on-first-fail` | 26,368 passed |
+| `3975WX/unpckhpd.txt` | `./build-release/remill-tester 3975WX/unpckhpd.txt --execute --stop-on-first-fail` | 58,816 passed |
+| `3975WX/unpckhps.txt` | `./build-release/remill-tester 3975WX/unpckhps.txt --execute --stop-on-first-fail` | 59,984 passed |
+| `3975WX/unpcklpd.txt` | `./build-release/remill-tester 3975WX/unpcklpd.txt --execute --stop-on-first-fail` | 58,032 passed |
+| `3975WX/unpcklps.txt` | `./build-release/remill-tester 3975WX/unpcklps.txt --execute --stop-on-first-fail` | 58,880 passed |
+| `3975WX/shufpd.txt` | `./build-release/remill-tester 3975WX/shufpd.txt --execute --stop-on-first-fail` | 538,624 passed |
+| `3975WX/shufps.txt` | `./build-release/remill-tester 3975WX/shufps.txt --execute --stop-on-first-fail` | 525,376 passed |
 | `3975WX/cbw.txt` | `./build-release/remill-tester 3975WX/cbw.txt --execute --stop-on-first-fail` | 27 passed |
 | `3975WX/cwde.txt` | `./build-release/remill-tester 3975WX/cwde.txt --execute --stop-on-first-fail` | 42 passed |
 | `3975WX/cdqe.txt` | `./build-release/remill-tester 3975WX/cdqe.txt --execute --stop-on-first-fail` | 87 passed |
