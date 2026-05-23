@@ -199,8 +199,7 @@ bool IsApproximateFpUnsupported(const XedMetadata &metadata) {
 }
 
 bool IsShaUnsupported(const XedMetadata &metadata) {
-  static const std::set<std::string> unsupported_iclasses = {
-      "SHA256MSG1", "SHA256MSG2", "SHA256RNDS2"};
+  static const std::set<std::string> unsupported_iclasses = {"SHA256RNDS2"};
   return unsupported_iclasses.count(metadata.iclass) != 0;
 }
 

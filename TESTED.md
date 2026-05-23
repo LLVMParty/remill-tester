@@ -29,6 +29,8 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/sha1msg2.txt` | `./build-release/remill-tester 3975WX/sha1msg2.txt --execute --stop-on-first-fail` | 64,432 passed |
 | `3975WX/sha1nexte.txt` | `./build-release/remill-tester 3975WX/sha1nexte.txt --execute --stop-on-first-fail` | 60,704 passed |
 | `3975WX/sha1rnds4.txt` | `./build-release/remill-tester 3975WX/sha1rnds4.txt --execute --stop-on-first-fail` | 580,736 passed |
+| `3975WX/sha256msg1.txt` | `./build-release/remill-tester 3975WX/sha256msg1.txt --execute --stop-on-first-fail` | 64,752 passed |
+| `3975WX/sha256msg2.txt` | `./build-release/remill-tester 3975WX/sha256msg2.txt --execute --stop-on-first-fail` | 64,560 passed |
 | `3975WX/test.txt` | `./build/remill-tester 3975WX/test.txt --execute --stop-on-first-fail` | 10,672 passed |
 | `3975WX/inc.txt` | `./build/remill-tester 3975WX/inc.txt --execute --stop-on-first-fail` | 3,064 passed |
 | `3975WX/dec.txt` | `./build/remill-tester 3975WX/dec.txt --execute --stop-on-first-fail` | 3,288 passed |
