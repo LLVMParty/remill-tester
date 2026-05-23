@@ -10,6 +10,27 @@ Known current semantic mismatches in the committed tester state:
 |---|---|---|---|
 | Approximate reciprocal square root | `./build-release/remill-tester 3975WX/rsqrtss.txt --execute --stop-on-first-fail` | First mismatch at state 65: expected `xmm0=0x5EB50000`, actual `0x5EB504F3` | Remill computes a precise reciprocal square root path; 3975WX returns the architectural approximate result. |
 
+The earlier SSE FP-to-integer invalid-conversion issue is fixed by Remill submodule commit `3bafb8a`:
+
+- Before the fix, `cvtpd2dq.txt` failed at `cvtpd2dq xmm15, xmm15`; hardware returned the x86 indefinite integer `0x80000000` for an invalid lane, while Remill returned `0`.
+- After the fix, full Release conversion runs pass:
+  - `cvtdq2pd.txt`: `51,024 passed, 0 failed, 0 skipped`
+  - `cvtdq2ps.txt`: `62,512 passed, 0 failed, 0 skipped`
+  - `cvtpd2dq.txt`: `48,360 passed, 0 failed, 0 skipped`
+  - `cvtpd2ps.txt`: `42,888 passed, 0 failed, 0 skipped`
+  - `cvtps2dq.txt`: `42,984 passed, 0 failed, 0 skipped`
+  - `cvtps2pd.txt`: `47,928 passed, 0 failed, 0 skipped`
+  - `cvtsd2si.txt`: `45,312 passed, 0 failed, 0 skipped`
+  - `cvtsd2ss.txt`: `58,360 passed, 0 failed, 0 skipped`
+  - `cvtsi2sd.txt`: `112,128 passed, 0 failed, 0 skipped`
+  - `cvtsi2ss.txt`: `116,480 passed, 0 failed, 0 skipped`
+  - `cvtss2sd.txt`: `53,552 passed, 0 failed, 0 skipped`
+  - `cvtss2si.txt`: `34,048 passed, 0 failed, 0 skipped`
+  - `cvttpd2dq.txt`: `48,144 passed, 0 failed, 0 skipped`
+  - `cvttps2dq.txt`: `40,856 passed, 0 failed, 0 skipped`
+  - `cvttsd2si.txt`: `45,568 passed, 0 failed, 0 skipped`
+  - `cvttss2si.txt`: `32,512 passed, 0 failed, 0 skipped`
+
 The earlier legacy SSE packed-compare predicate issue is fixed by Remill submodule commit `a08d0ac`:
 
 - Before the fix, `cmppd.txt` failed at `cmppd xmm7, xmm0, 0x0F` because Remill interpreted the immediate as the AVX 5-bit `TRUE_UQ` predicate instead of legacy SSE `imm8[2:0] == 7` (`ORD_Q`).
