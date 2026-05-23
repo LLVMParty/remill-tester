@@ -44,6 +44,15 @@ The earlier `hsubpd`/`hsubps` lift gaps are fixed by Remill submodule commit `37
   - `haddpd.txt`: `62,816 passed, 0 failed, 0 skipped`
   - `haddps.txt`: `63,064 passed, 0 failed, 0 skipped`
 
+The earlier `blendpd`/`blendps`/`blendvpd`/`blendvps` lift gaps are fixed by Remill submodule commit `7dfa6ba`:
+
+- Before the fix, limited 20-row samples skipped as `unsupported:remill_lift`.
+- After the fix, full Release runs pass:
+  - `blendpd.txt`: `529,968 passed, 0 failed, 0 skipped`
+  - `blendps.txt`: `537,288 passed, 0 failed, 0 skipped`
+  - `blendvpd.txt`: `61,346 passed, 0 failed, 0 skipped`
+  - `blendvps.txt`: `60,230 passed, 0 failed, 0 skipped`
+
 The earlier `movzx`/`movsx`/`movsxd` issue is fixed by Remill submodule commit `d83d754` and parent commit `160f119`:
 
 - `./build-release/remill-tester 3975WX/movzx.txt --execute --stop-on-first-fail`
