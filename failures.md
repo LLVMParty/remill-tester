@@ -146,6 +146,7 @@ These are not counted as semantic failures by the runner (`execution_failed=0`),
 | Remill lift unsupported: packed single reciprocal sqrt | `./build-release/remill-tester 3975WX/rsqrtps.txt --execute --limit-states 20 --stop-on-first-fail` | `20 skipped`; `unsupported:remill_lift=20` | Scalar `rsqrtss` lifts but currently mismatches the 3975WX approximate result. |
 | Remill lift unsupported: AES | `./build-release/remill-tester 3975WX/aesenc.txt --execute --limit-states 20 --stop-on-first-fail` | `20 skipped`; `unsupported:remill_lift=20` | Also observed for `aesdec`. |
 | x87/FPU state unsupported | `./build-release/remill-tester 3975WX/fadd.txt --execute --limit-states 5 --stop-on-first-fail` | skipped as `fpu_state_unsupported` | Requires x87 state bridge and safe JIT support before comparing. |
+| MMX state unsupported in raw corpus | `./build-release/remill-tester 3975WX/movq2dq.txt --execute --stop-on-first-fail` | `0 passed, 0 failed, 16,128 skipped`; `mmx_state_unsupported=16,128` | `/Users/admin/Projects/x86Tester/src/execution/execution.cpp` does not expose MMX registers in `getContextReg`, so raw rows with `mm0`..`mm7` do not provide a trustworthy hardware MMX oracle. Also observed: `cvtpi2pd.txt` skips `16,128`, `cvtpi2ps.txt` skips `22,016`. |
 | Privileged/IO/system instructions | e.g. `cli`, `rdtsc` limited runs | skipped as `privileged_or_io_unsupported` | Avoids host JIT fatal paths and nondeterministic system semantics. |
 
 ## Timeouts / long sweeps

@@ -135,6 +135,40 @@ bool IsFpuUnsupported(const XedMetadata &metadata) {
   return metadata.extension == "X87" || metadata.category.rfind("X87", 0) == 0;
 }
 
+bool IsMmxStateKey(const std::string &raw_key) {
+  const auto key = ToLower(CanonicalStateKey(raw_key));
+  if (key.size() != 3 || key.rfind("mm", 0) != 0) {
+    return false;
+  }
+  return key[2] >= '0' && key[2] <= '7';
+}
+
+bool UsesMmxState(const ExpectationRow &row) {
+  for (const auto &[key, _] : row.initial_state) {
+    if (IsMmxStateKey(key)) {
+      return true;
+    }
+  }
+  for (const auto &[key, _] : row.initial_bytes) {
+    if (IsMmxStateKey(key)) {
+      return true;
+    }
+  }
+  if (row.expected_final_state.has_value()) {
+    for (const auto &[key, _] : *row.expected_final_state) {
+      if (IsMmxStateKey(key)) {
+        return true;
+      }
+    }
+  }
+  for (const auto &[key, _] : row.expected_final_bytes) {
+    if (IsMmxStateKey(key)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool IsPrivilegedOrIoUnsupported(const XedMetadata &metadata) {
   static const std::set<std::string> unsupported_iclasses = {
       "CLI",  "STI",   "HLT",   "IN",     "OUT",    "INSB",  "INSW",
@@ -425,6 +459,13 @@ void RunSelfTests() {
   const auto byte_snapshot = SnapshotBytes(state, {"xmm5"});
   Require(byte_snapshot.at("xmm5") == xmm_value, "snapshot xmm5 bytes");
 
+  std::vector<std::uint8_t> mm_value = {0x10, 0x20, 0x30, 0x40,
+                                        0x50, 0x60, 0x70, 0x80};
+  Require(SetByteRegister(state, "mm3", mm_value), "set mm3 bytes");
+  Require(GetByteRegister(state, "mm3") == mm_value, "get mm3 bytes");
+  const auto mm_snapshot = SnapshotBytes(state, {"mm3"});
+  Require(mm_snapshot.at("mm3") == mm_value, "snapshot mm3 bytes");
+
   ExpectationRow xor_row;
   xor_row.address = 0x4000001;
   xor_row.opcode = "4831D8";
@@ -627,6 +668,12 @@ int Run(const Options &options) {
         }
         if (IsFpuUnsupported(metadata)) {
           const std::string reason = "fpu_state_unsupported";
+          RecordSkip(summary, reason);
+          WriteSkipJson(skip_report, path, row, reason);
+          continue;
+        }
+        if (UsesMmxState(row)) {
+          const std::string reason = "mmx_state_unsupported";
           RecordSkip(summary, reason);
           WriteSkipJson(skip_report, path, row, reason);
           continue;

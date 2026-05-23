@@ -10,7 +10,10 @@
 namespace remill_tester {
 namespace {
 
+enum class ByteRegisterKind { kVector, kMmx };
+
 struct ByteRegisterInfo {
+  ByteRegisterKind kind = ByteRegisterKind::kVector;
   std::size_t index = 0;
   std::size_t size = 0;
 };
@@ -39,8 +42,24 @@ ParseByteRegisterName(const std::string &raw_name) {
     if (ec != std::errc{} || ptr != end || index >= kNumVecRegisters) {
       return std::nullopt;
     }
-    return ByteRegisterInfo{index, prefix.size};
+    return ByteRegisterInfo{ByteRegisterKind::kVector, index, prefix.size};
   }
+
+  if (name.rfind("mm", 0) == 0) {
+    const auto index_text = name.substr(2);
+    if (index_text.empty()) {
+      return std::nullopt;
+    }
+    std::size_t index = 0;
+    const auto *begin = index_text.data();
+    const auto *end = index_text.data() + index_text.size();
+    const auto [ptr, ec] = std::from_chars(begin, end, index, 10);
+    if (ec != std::errc{} || ptr != end || index >= 8) {
+      return std::nullopt;
+    }
+    return ByteRegisterInfo{ByteRegisterKind::kMmx, index, 8};
+  }
+
   return std::nullopt;
 }
 
@@ -135,8 +154,15 @@ bool SetByteRegister(State &state, const std::string &name,
   if (!info.has_value() || bytes.size() != info->size) {
     return false;
   }
-  std::memcpy(&state.vec[info->index], bytes.data(), bytes.size());
-  return true;
+  switch (info->kind) {
+  case ByteRegisterKind::kVector:
+    std::memcpy(&state.vec[info->index], bytes.data(), bytes.size());
+    return true;
+  case ByteRegisterKind::kMmx:
+    std::memcpy(&state.mmx.elems[info->index].val, bytes.data(), bytes.size());
+    return true;
+  }
+  return false;
 }
 
 std::optional<std::vector<std::uint8_t>>
@@ -146,8 +172,15 @@ GetByteRegister(const State &state, const std::string &name) {
     return std::nullopt;
   }
   std::vector<std::uint8_t> bytes(info->size);
-  std::memcpy(bytes.data(), &state.vec[info->index], bytes.size());
-  return bytes;
+  switch (info->kind) {
+  case ByteRegisterKind::kVector:
+    std::memcpy(bytes.data(), &state.vec[info->index], bytes.size());
+    return bytes;
+  case ByteRegisterKind::kMmx:
+    std::memcpy(bytes.data(), &state.mmx.elems[info->index].val, bytes.size());
+    return bytes;
+  }
+  return std::nullopt;
 }
 
 void SetFlags(State &state, std::uint64_t flags) {
@@ -193,6 +226,8 @@ bool ApplyInitialState(
       SetFlags(state, value);
     } else if (IsScalarRegister(key)) {
       SetScalarRegister(state, key, value);
+    } else if (IsByteRegister(key)) {
+      continue;
     } else if (error != nullptr) {
       *error = "unsupported scalar state key: " + key;
       return false;

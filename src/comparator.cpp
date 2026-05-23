@@ -181,6 +181,9 @@ CompareExecutionResult(const ExpectationRow &row, const XedMetadata &metadata,
   if (row.expected_final_state.has_value()) {
     for (const auto &[raw_key, expected] : *row.expected_final_state) {
       const auto key = CanonicalStateKey(raw_key);
+      if (IsByteRegister(key)) {
+        continue;
+      }
       const auto actual_it = execution_result.final_state.find(key);
       if (actual_it == execution_result.final_state.end()) {
         AddMismatch(comparison,
