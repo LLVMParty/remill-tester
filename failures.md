@@ -155,13 +155,12 @@ The earlier `rol`/`ror` CF mismatches are also fixed in the comparator by dynami
 
 ## Current skips / unsupported areas
 
-These are not counted as semantic failures by the runner (`execution_failed=0`), but they are outstanding coverage gaps. A combined Release audit over all currently un-green files except the known `rsqrtss` mismatch selected `1,440,172` rows: `58,832 passed, 0 failed, 1,381,340 skipped`.
+These are not counted as semantic failures by the runner (`execution_failed=0`), but they are outstanding coverage gaps. A combined Release audit over the `105` files currently absent from `TESTED.md` selected `534,094` rows: `58,832 passed, 0 failed, 475,262 skipped`.
 
 | Area | Example command | Current result | Notes |
 |---|---|---|---|
 | Raw memory-oracle gaps | combined remaining-file audit, including `xlat`, string ops, and `enter` | `23,118 skipped`; `memory_state_missing=23,118` | Raw `3975WX` rows do not serialize table/stack/string memory contents. Needs normalized `mem[...]` input/output cells or generator changes. |
 | Approximate reciprocal/reciprocal-sqrt instructions | `./build-release/remill-tester 3975WX/rcpps.txt 3975WX/rcpss.txt 3975WX/rsqrtps.txt 3975WX/rsqrtss.txt --execute` | `229,872 skipped`; `approximate_fp_unsupported=229,872` | Pre-JIT skipped until exact 3975WX approximate-result modeling is implemented for `rcpps`, `rcpss`, `rsqrtps`, and `rsqrtss`. |
-| SHA extension instructions | `./build-release/remill-tester 3975WX/sha1msg1.txt 3975WX/sha1msg2.txt 3975WX/sha1nexte.txt 3975WX/sha1rnds4.txt 3975WX/sha256msg1.txt 3975WX/sha256msg2.txt 3975WX/sha256rnds2.txt --execute --stop-on-first-fail` | fixed in Remill submodule commits `a227ce9`, `253fd61`, `68a43a8`, `3fb9fdf`, `0c80e8c`, `3b997da` | Combined SHA extension sweep passes: `964,574` passed, `0` failed, `0` skipped. Individual rows: `63,904` SHA1MSG1, `64,432` SHA1MSG2, `60,704` SHA1NEXTE, `580,736` SHA1RNDS4, `64,752` SHA256MSG1, `64,560` SHA256MSG2, `65,486` SHA256RNDS2. |
 | x87/FPU state unsupported | combined remaining-file audit over x87 files | `44,170 skipped`; `fpu_state_unsupported=44,170` | Requires x87 state bridge and safe JIT support before comparing. |
 | MMX state unsupported in raw corpus | combined audit over `movq2dq`, `cvtpi2pd`, and `cvtpi2ps` | `54,272 skipped`; `mmx_state_unsupported=54,272` | `/Users/admin/Projects/x86Tester/src/execution/execution.cpp` does not expose MMX registers in `getContextReg`, so raw rows with `mm0`..`mm7` do not provide a trustworthy hardware MMX oracle. |
 | Privileged/IO instructions | e.g. `./build-release/remill-tester 3975WX/cli.txt 3975WX/lmsw.txt --execute --limit-states 1000` | skipped as `privileged_or_io_unsupported` | Avoids privileged host/JIT paths. |
