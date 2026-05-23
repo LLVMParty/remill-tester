@@ -89,6 +89,15 @@ The earlier `extractps`/`insertps` lift gaps are fixed by Remill submodule commi
   - `extractps.txt`: `124,160 passed, 0 failed, 0 skipped`
   - `insertps.txt`: `405,160 passed, 0 failed, 0 skipped`
 
+The earlier `roundpd`/`roundps`/`roundsd`/`roundss` lift gaps are fixed by Remill submodule commit `ce2c8a5`:
+
+- Before the fix, limited 20-row samples skipped as `unsupported:remill_lift`.
+- After the fix, full Release runs pass:
+  - `roundpd.txt`: `454,512 passed, 0 failed, 0 skipped`
+  - `roundps.txt`: `479,064 passed, 0 failed, 0 skipped`
+  - `roundsd.txt`: `506,000 passed, 0 failed, 0 skipped`
+  - `roundss.txt`: `513,920 passed, 0 failed, 0 skipped`
+
 The earlier `movzx`/`movsx`/`movsxd` issue is fixed by Remill submodule commit `d83d754` and parent commit `160f119`:
 
 - `./build-release/remill-tester 3975WX/movzx.txt --execute --stop-on-first-fail`

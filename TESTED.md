@@ -118,6 +118,10 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/cvttps2dq.txt` | `./build-release/remill-tester 3975WX/cvttps2dq.txt --execute --stop-on-first-fail` | 40,856 passed |
 | `3975WX/cvttsd2si.txt` | `./build-release/remill-tester 3975WX/cvttsd2si.txt --execute --stop-on-first-fail` | 45,568 passed |
 | `3975WX/cvttss2si.txt` | `./build-release/remill-tester 3975WX/cvttss2si.txt --execute --stop-on-first-fail` | 32,512 passed |
+| `3975WX/roundpd.txt` | `./build-release/remill-tester 3975WX/roundpd.txt --execute --stop-on-first-fail` | 454,512 passed |
+| `3975WX/roundps.txt` | `./build-release/remill-tester 3975WX/roundps.txt --execute --stop-on-first-fail` | 479,064 passed |
+| `3975WX/roundsd.txt` | `./build-release/remill-tester 3975WX/roundsd.txt --execute --stop-on-first-fail` | 506,000 passed |
+| `3975WX/roundss.txt` | `./build-release/remill-tester 3975WX/roundss.txt --execute --stop-on-first-fail` | 513,920 passed |
 | `3975WX/cmppd.txt` | `./build-release/remill-tester 3975WX/cmppd.txt --execute --stop-on-first-fail` | 523,512 passed |
 | `3975WX/cmpps.txt` | `./build-release/remill-tester 3975WX/cmpps.txt --execute --stop-on-first-fail` | 497,792 passed |
 | `3975WX/comisd.txt` | `./build-release/remill-tester 3975WX/comisd.txt --execute --stop-on-first-fail` | 2,272 passed |
