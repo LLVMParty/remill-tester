@@ -153,14 +153,18 @@ The earlier `movzx`/`movsx`/`movsxd` issue is fixed by Remill submodule commit `
 
 The earlier `rol`/`ror` CF mismatches are also fixed in the comparator by dynamically ignoring flags for no-op rotate counts when the input row does not provide initial flags.
 
+The earlier approximate reciprocal/reciprocal-sqrt skips are fixed by Remill submodule commit `8f0c541` and the parent submodule update in this changeset:
+
+- `./build-release/remill-tester 3975WX/rcpps.txt 3975WX/rcpss.txt 3975WX/rsqrtps.txt 3975WX/rsqrtss.txt --execute --stop-on-first-fail`
+  - `229,872 passed, 0 failed, 0 skipped`
+
 ## Current skips / unsupported areas
 
-These are not counted as semantic failures by the runner (`execution_failed=0`), but they are outstanding coverage gaps. A combined Release audit over the `94` files currently absent from `TESTED.md` selected `528,503` rows: `164,709 passed, 0 failed, 363,794 skipped`.
+These are not counted as semantic failures by the runner (`execution_failed=0`), but they are outstanding coverage gaps. A combined Release audit over the `90` files currently absent from `TESTED.md` selected `298,631` rows: `164,709 passed, 0 failed, 133,922 skipped`.
 
 | Area | Example command | Current result | Notes |
 |---|---|---|---|
 | Raw memory-oracle gaps | combined remaining-file audit, including `xlat`, string ops, and `enter` | `23,118 skipped`; `memory_state_missing=23,118` | Raw `3975WX` rows do not serialize table/stack/string memory contents. Needs normalized `mem[...]` input/output cells or generator changes. |
-| Approximate reciprocal/reciprocal-sqrt instructions | `./build-release/remill-tester 3975WX/rcpps.txt 3975WX/rcpss.txt 3975WX/rsqrtps.txt 3975WX/rsqrtss.txt --execute` | `229,872 skipped`; `approximate_fp_unsupported=229,872` | Pre-JIT skipped until exact 3975WX approximate-result modeling is implemented for `rcpps`, `rcpss`, `rsqrtps`, and `rsqrtss`. |
 | x87/FPU state unsupported | combined remaining-file audit over x87 files | `43,587 skipped`; `fpu_state_unsupported=43,587` | Requires the broader x87 stack/tag/control bridge before comparing arithmetic and data-transfer instructions. A minimal status-word bridge now covers `fnstsw`, `fninit`, `fnclex`, `fincstp`, `fdecstp`, `ffree`, and `ffreep` (`583` rows passed). |
 | MMX state unsupported in raw corpus | combined audit over `movq2dq`, `cvtpi2pd`, and `cvtpi2ps` | `54,272 skipped`; `mmx_state_unsupported=54,272` | `/Users/admin/Projects/x86Tester/src/execution/execution.cpp` does not expose MMX registers in `getContextReg`, so raw rows with `mm0`..`mm7` do not provide a trustworthy hardware MMX oracle. |
 | Privileged/IO instructions | e.g. `./build-release/remill-tester 3975WX/cli.txt 3975WX/lmsw.txt --execute --limit-states 1000` | skipped as `privileged_or_io_unsupported` | Avoids privileged host/JIT paths. |

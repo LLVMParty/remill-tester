@@ -77,6 +77,10 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/sqrtps.txt` | `./build-release/remill-tester 3975WX/sqrtps.txt --execute --stop-on-first-fail` | 64,168 passed |
 | `3975WX/sqrtsd.txt` | `./build-release/remill-tester 3975WX/sqrtsd.txt --execute --stop-on-first-fail` | 61,744 passed |
 | `3975WX/sqrtss.txt` | `./build-release/remill-tester 3975WX/sqrtss.txt --execute --stop-on-first-fail` | 60,880 passed |
+| `3975WX/rcpps.txt` | `./build-release/remill-tester 3975WX/rcpps.txt --execute --stop-on-first-fail` | 56,808 passed |
+| `3975WX/rcpss.txt` | `./build-release/remill-tester 3975WX/rcpss.txt --execute --stop-on-first-fail` | 57,912 passed |
+| `3975WX/rsqrtps.txt` | `./build-release/remill-tester 3975WX/rsqrtps.txt --execute --stop-on-first-fail` | 56,656 passed |
+| `3975WX/rsqrtss.txt` | `./build-release/remill-tester 3975WX/rsqrtss.txt --execute --stop-on-first-fail` | 58,496 passed |
 | `3975WX/maxpd.txt` | `./build-release/remill-tester 3975WX/maxpd.txt --execute --stop-on-first-fail` | 61,568 passed |
 | `3975WX/maxsd.txt` | `./build-release/remill-tester 3975WX/maxsd.txt --execute --stop-on-first-fail` | 60,232 passed |
 | `3975WX/maxss.txt` | `./build-release/remill-tester 3975WX/maxss.txt --execute --stop-on-first-fail` | 59,848 passed |
