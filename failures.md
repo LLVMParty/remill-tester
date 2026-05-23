@@ -4,11 +4,7 @@ This file records currently known non-green areas separately from `TESTED.md`.
 
 ## Current semantic failures
 
-Known current semantic mismatches in the committed tester state:
-
-| Area | Example command | Current result | Notes |
-|---|---|---|---|
-| Approximate reciprocal square root | `./build-release/remill-tester 3975WX/rsqrtss.txt --execute --stop-on-first-fail` | First mismatch at state 65: expected `xmm0=0x5EB50000`, actual `0x5EB504F3` | Remill computes a precise reciprocal square root path; 3975WX returns the architectural approximate result. |
+No current semantic mismatches are left in the committed tester state. Unsupported or unmodeled areas are tracked as skips below until the relevant state/oracle/semantics support exists.
 
 The earlier SSE FP-to-integer invalid-conversion issue is fixed by Remill submodule commit `3bafb8a`:
 
@@ -164,7 +160,7 @@ These are not counted as semantic failures by the runner (`execution_failed=0`),
 | Area | Example command | Current result | Notes |
 |---|---|---|---|
 | Raw memory-oracle gaps | combined remaining-file audit, including `xlat`, string ops, and `enter` | `23,118 skipped`; `memory_state_missing=23,118` | Raw `3975WX` rows do not serialize table/stack/string memory contents. Needs normalized `mem[...]` input/output cells or generator changes. |
-| Approximate reciprocal/reciprocal-sqrt instructions | `./build-release/remill-tester 3975WX/rcpps.txt 3975WX/rcpss.txt 3975WX/rsqrtps.txt --execute` | `171,376 skipped`; `approximate_fp_unsupported=171,376` | Pre-JIT skipped until exact 3975WX approximate-result modeling is implemented. Scalar `rsqrtss` still lifts and is tracked as a semantic mismatch above. |
+| Approximate reciprocal/reciprocal-sqrt instructions | `./build-release/remill-tester 3975WX/rcpps.txt 3975WX/rcpss.txt 3975WX/rsqrtps.txt 3975WX/rsqrtss.txt --execute` | `229,872 skipped`; `approximate_fp_unsupported=229,872` | Pre-JIT skipped until exact 3975WX approximate-result modeling is implemented for `rcpps`, `rcpss`, `rsqrtps`, and `rsqrtss`. |
 | SHA extension instructions | `./build-release/remill-tester 3975WX/sha1msg1.txt 3975WX/sha1msg2.txt 3975WX/sha1nexte.txt 3975WX/sha1rnds4.txt 3975WX/sha256msg1.txt 3975WX/sha256msg2.txt 3975WX/sha256rnds2.txt --execute --stop-on-first-fail` | fixed in Remill submodule commits `a227ce9`, `253fd61`, `68a43a8`, `3fb9fdf`, `0c80e8c`, `3b997da` | Combined SHA extension sweep passes: `964,574` passed, `0` failed, `0` skipped. Individual rows: `63,904` SHA1MSG1, `64,432` SHA1MSG2, `60,704` SHA1NEXTE, `580,736` SHA1RNDS4, `64,752` SHA256MSG1, `64,560` SHA256MSG2, `65,486` SHA256RNDS2. |
 | x87/FPU state unsupported | combined remaining-file audit over x87 files | `44,170 skipped`; `fpu_state_unsupported=44,170` | Requires x87 state bridge and safe JIT support before comparing. |
 | MMX state unsupported in raw corpus | combined audit over `movq2dq`, `cvtpi2pd`, and `cvtpi2ps` | `54,272 skipped`; `mmx_state_unsupported=54,272` | `/Users/admin/Projects/x86Tester/src/execution/execution.cpp` does not expose MMX registers in `getContextReg`, so raw rows with `mm0`..`mm7` do not provide a trustworthy hardware MMX oracle. |

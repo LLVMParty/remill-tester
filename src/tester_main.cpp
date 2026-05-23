@@ -193,8 +193,8 @@ bool IsDescriptorStateUnsupported(const XedMetadata &metadata) {
 }
 
 bool IsApproximateFpUnsupported(const XedMetadata &metadata) {
-  static const std::set<std::string> unsupported_iclasses = {"RCPPS", "RCPSS",
-                                                            "RSQRTPS"};
+  static const std::set<std::string> unsupported_iclasses = {
+      "RCPPS", "RCPSS", "RSQRTPS", "RSQRTSS"};
   return unsupported_iclasses.count(metadata.iclass) != 0;
 }
 
