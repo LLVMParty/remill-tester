@@ -192,6 +192,12 @@ bool IsDescriptorStateUnsupported(const XedMetadata &metadata) {
   return unsupported_iclasses.count(metadata.iclass) != 0;
 }
 
+bool IsApproximateFpUnsupported(const XedMetadata &metadata) {
+  static const std::set<std::string> unsupported_iclasses = {"RCPPS", "RCPSS",
+                                                            "RSQRTPS"};
+  return unsupported_iclasses.count(metadata.iclass) != 0;
+}
+
 void RecordSkip(Summary &summary, const std::string &reason) {
   ++summary.execution_skipped;
   ++summary.skip_reasons[reason];
@@ -706,6 +712,12 @@ int Run(const Options &options) {
         }
         if (IsDescriptorStateUnsupported(metadata)) {
           const std::string reason = "descriptor_state_unsupported";
+          RecordSkip(summary, reason);
+          WriteSkipJson(skip_report, path, row, reason);
+          continue;
+        }
+        if (IsApproximateFpUnsupported(metadata)) {
+          const std::string reason = "approximate_fp_unsupported";
           RecordSkip(summary, reason);
           WriteSkipJson(skip_report, path, row, reason);
           continue;
