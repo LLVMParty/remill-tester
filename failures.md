@@ -105,6 +105,12 @@ The earlier `dppd`/`dpps` lift gaps are fixed by Remill submodule commit `6d7712
   - `dppd.txt`: `353,856 passed, 0 failed, 0 skipped`
   - `dpps.txt`: `350,928 passed, 0 failed, 0 skipped`
 
+The earlier `mulx` destination-ordering mismatch is fixed by Remill submodule commit `d000b5c`:
+
+- Before the fix, `mulx r13d, r13d, r8d` showed an aliasing mismatch (`r13` expected high half, actual low half).
+- A first attempt exposed non-aliasing destination reversal on `mulx r14d, r13d, r12d`.
+- After the fix, full Release `mulx.txt` passes: `1,520,573 passed, 0 failed, 0 skipped`.
+
 The earlier `movzx`/`movsx`/`movsxd` issue is fixed by Remill submodule commit `d83d754` and parent commit `160f119`:
 
 - `./build-release/remill-tester 3975WX/movzx.txt --execute --stop-on-first-fail`
