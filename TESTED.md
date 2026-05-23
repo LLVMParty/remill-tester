@@ -102,6 +102,12 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/unpcklps.txt` | `./build-release/remill-tester 3975WX/unpcklps.txt --execute --stop-on-first-fail` | 58,880 passed |
 | `3975WX/shufpd.txt` | `./build-release/remill-tester 3975WX/shufpd.txt --execute --stop-on-first-fail` | 538,624 passed |
 | `3975WX/shufps.txt` | `./build-release/remill-tester 3975WX/shufps.txt --execute --stop-on-first-fail` | 525,376 passed |
+| `3975WX/cmppd.txt` | `./build-release/remill-tester 3975WX/cmppd.txt --execute --stop-on-first-fail` | 523,512 passed |
+| `3975WX/cmpps.txt` | `./build-release/remill-tester 3975WX/cmpps.txt --execute --stop-on-first-fail` | 497,792 passed |
+| `3975WX/comisd.txt` | `./build-release/remill-tester 3975WX/comisd.txt --execute --stop-on-first-fail` | 2,272 passed |
+| `3975WX/comiss.txt` | `./build-release/remill-tester 3975WX/comiss.txt --execute --stop-on-first-fail` | 2,272 passed |
+| `3975WX/ucomisd.txt` | `./build-release/remill-tester 3975WX/ucomisd.txt --execute --stop-on-first-fail` | 2,272 passed |
+| `3975WX/ucomiss.txt` | `./build-release/remill-tester 3975WX/ucomiss.txt --execute --stop-on-first-fail` | 2,272 passed |
 | `3975WX/blendpd.txt` | `./build-release/remill-tester 3975WX/blendpd.txt --execute --stop-on-first-fail` | 529,968 passed |
 | `3975WX/blendps.txt` | `./build-release/remill-tester 3975WX/blendps.txt --execute --stop-on-first-fail` | 537,288 passed |
 | `3975WX/blendvpd.txt` | `./build-release/remill-tester 3975WX/blendvpd.txt --execute --stop-on-first-fail` | 61,346 passed |

@@ -10,6 +10,14 @@ Known current semantic mismatches in the committed tester state:
 |---|---|---|---|
 | Approximate reciprocal square root | `./build-release/remill-tester 3975WX/rsqrtss.txt --execute --stop-on-first-fail` | First mismatch at state 65: expected `xmm0=0x5EB50000`, actual `0x5EB504F3` | Remill computes a precise reciprocal square root path; 3975WX returns the architectural approximate result. |
 
+The earlier legacy SSE packed-compare predicate issue is fixed by Remill submodule commit `a08d0ac`:
+
+- Before the fix, `cmppd.txt` failed at `cmppd xmm7, xmm0, 0x0F` because Remill interpreted the immediate as the AVX 5-bit `TRUE_UQ` predicate instead of legacy SSE `imm8[2:0] == 7` (`ORD_Q`).
+- After the fix, full Release runs pass:
+  - `cmppd.txt`: `523,512 passed, 0 failed, 0 skipped`
+  - `cmpps.txt`: `497,792 passed, 0 failed, 0 skipped`
+  - `comisd.txt`/`comiss.txt`/`ucomisd.txt`/`ucomiss.txt`: each `2,272 passed, 0 failed, 0 skipped`
+
 The earlier `divpd`/`divps`/`divsd`/`divss` NaN-sign issue is fixed by Remill submodule commit `9c88816`:
 
 - Before the fix, limited 20-row samples showed negative quiet-NaN mismatches: `divpd` 11 failures, `divps` 20 failures, `divsd` 9 failures, `divss` 12 failures.
