@@ -53,6 +53,13 @@ The earlier `blendpd`/`blendps`/`blendvpd`/`blendvps` lift gaps are fixed by Rem
   - `blendvpd.txt`: `61,346 passed, 0 failed, 0 skipped`
   - `blendvps.txt`: `60,230 passed, 0 failed, 0 skipped`
 
+The earlier `extractps`/`insertps` lift gaps are fixed by Remill submodule commit `f00e89d`:
+
+- Before the fix, limited 20-row samples skipped as `unsupported:remill_lift`.
+- After the fix, full Release runs pass:
+  - `extractps.txt`: `124,160 passed, 0 failed, 0 skipped`
+  - `insertps.txt`: `405,160 passed, 0 failed, 0 skipped`
+
 The earlier `movzx`/`movsx`/`movsxd` issue is fixed by Remill submodule commit `d83d754` and parent commit `160f119`:
 
 - `./build-release/remill-tester 3975WX/movzx.txt --execute --stop-on-first-fail`
