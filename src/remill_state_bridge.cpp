@@ -148,6 +148,26 @@ bool IsByteRegister(const std::string &name) {
   return ParseByteRegisterName(name).has_value();
 }
 
+void SetX87Status(State &state, std::uint64_t value) {
+  const auto status = static_cast<std::uint16_t>(value & 0x7f7fu);
+  state.x87.fxsave.swd.flat = status;
+  state.sw.ie = (status >> 0u) & 1u;
+  state.sw.de = (status >> 1u) & 1u;
+  state.sw.ze = (status >> 2u) & 1u;
+  state.sw.oe = (status >> 3u) & 1u;
+  state.sw.ue = (status >> 4u) & 1u;
+  state.sw.pe = (status >> 5u) & 1u;
+  state.sw.sf = (status >> 6u) & 1u;
+  state.sw.c0 = (status >> 8u) & 1u;
+  state.sw.c1 = (status >> 9u) & 1u;
+  state.sw.c2 = (status >> 10u) & 1u;
+  state.sw.c3 = (status >> 14u) & 1u;
+}
+
+std::uint64_t GetX87Status(const State &state) {
+  return state.x87.fxsave.swd.flat;
+}
+
 bool SetByteRegister(State &state, const std::string &name,
                      const std::vector<std::uint8_t> &bytes) {
   const auto info = ParseByteRegisterName(name);
@@ -230,6 +250,8 @@ bool ApplyInitialState(
       // currently carry CR0. The executed host CR0 value is modeled in the
       // instruction semantics for supported probes, so tolerate this field.
       continue;
+    } else if (key == "x87status") {
+      SetX87Status(state, value);
     } else if (IsScalarRegister(key)) {
       SetScalarRegister(state, key, value);
     } else if (IsByteRegister(key)) {
@@ -244,7 +266,8 @@ bool ApplyInitialState(
 
   for (const auto &[raw_key, bytes] : initial_bytes) {
     const auto key = CanonicalStateKey(raw_key);
-    if (key == "flag" || key == "cr0" || IsScalarRegister(key)) {
+    if (key == "flag" || key == "cr0" || key == "x87status" ||
+        IsScalarRegister(key)) {
       continue;
     }
     if (IsByteRegister(key)) {
@@ -271,6 +294,8 @@ SnapshotState(const State &state, const std::vector<std::string> &keys) {
     const auto key = CanonicalStateKey(raw_key);
     if (key == "flag") {
       snapshot[key] = GetFlags(state);
+    } else if (key == "x87status") {
+      snapshot[key] = GetX87Status(state);
     } else if (const auto value = GetScalarRegister(state, key)) {
       snapshot[key] = *value;
     }
