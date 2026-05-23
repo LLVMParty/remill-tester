@@ -198,6 +198,13 @@ bool IsApproximateFpUnsupported(const XedMetadata &metadata) {
   return unsupported_iclasses.count(metadata.iclass) != 0;
 }
 
+bool IsShaUnsupported(const XedMetadata &metadata) {
+  static const std::set<std::string> unsupported_iclasses = {
+      "SHA1MSG1", "SHA1MSG2", "SHA1NEXTE", "SHA1RNDS4",
+      "SHA256MSG1", "SHA256MSG2", "SHA256RNDS2"};
+  return unsupported_iclasses.count(metadata.iclass) != 0;
+}
+
 void RecordSkip(Summary &summary, const std::string &reason) {
   ++summary.execution_skipped;
   ++summary.skip_reasons[reason];
@@ -718,6 +725,12 @@ int Run(const Options &options) {
         }
         if (IsApproximateFpUnsupported(metadata)) {
           const std::string reason = "approximate_fp_unsupported";
+          RecordSkip(summary, reason);
+          WriteSkipJson(skip_report, path, row, reason);
+          continue;
+        }
+        if (IsShaUnsupported(metadata)) {
+          const std::string reason = "sha_extension_unsupported";
           RecordSkip(summary, reason);
           WriteSkipJson(skip_report, path, row, reason);
           continue;
