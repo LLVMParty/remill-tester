@@ -155,7 +155,7 @@ The earlier `rol`/`ror` CF mismatches are also fixed in the comparator by dynami
 
 ## Current skips / unsupported areas
 
-These are not counted as semantic failures by the runner (`execution_failed=0`), but they are outstanding coverage gaps. A combined Release audit over the `105` files currently absent from `TESTED.md` selected `534,094` rows: `58,832 passed, 0 failed, 475,262 skipped`.
+These are not counted as semantic failures by the runner (`execution_failed=0`), but they are outstanding coverage gaps. A combined Release audit over the `104` files currently absent from `TESTED.md` selected `533,054` rows: `58,832 passed, 0 failed, 474,222 skipped`.
 
 | Area | Example command | Current result | Notes |
 |---|---|---|---|
@@ -164,7 +164,7 @@ These are not counted as semantic failures by the runner (`execution_failed=0`),
 | x87/FPU state unsupported | combined remaining-file audit over x87 files | `44,170 skipped`; `fpu_state_unsupported=44,170` | Requires x87 state bridge and safe JIT support before comparing. |
 | MMX state unsupported in raw corpus | combined audit over `movq2dq`, `cvtpi2pd`, and `cvtpi2ps` | `54,272 skipped`; `mmx_state_unsupported=54,272` | `/Users/admin/Projects/x86Tester/src/execution/execution.cpp` does not expose MMX registers in `getContextReg`, so raw rows with `mm0`..`mm7` do not provide a trustworthy hardware MMX oracle. |
 | Privileged/IO instructions | e.g. `./build-release/remill-tester 3975WX/cli.txt 3975WX/lmsw.txt --execute --limit-states 1000` | skipped as `privileged_or_io_unsupported` | Avoids privileged host/JIT paths. |
-| Environment reads | `./build-release/remill-tester 3975WX/rdtsc.txt 3975WX/rdtscp.txt 3975WX/rdpmc.txt 3975WX/rdpru.txt 3975WX/rdrand.txt 3975WX/rdseed.txt 3975WX/rdpid.txt 3975WX/rdfsbase.txt 3975WX/rdgsbase.txt 3975WX/rdsspd.txt 3975WX/rdsspq.txt --execute` | skipped as `environment_read_unsupported`; combined triage run had `13,568` skips | Results depend on nondeterministic/system state not modeled in Remill tester state. |
+| Environment reads | `./build-release/remill-tester 3975WX/rdtsc.txt 3975WX/rdtscp.txt 3975WX/rdpmc.txt 3975WX/rdpru.txt 3975WX/rdrand.txt 3975WX/rdseed.txt 3975WX/rdpid.txt 3975WX/rdgsbase.txt 3975WX/rdsspd.txt 3975WX/rdsspq.txt --execute` | skipped as `environment_read_unsupported`; combined triage run had `12,528` skips | Results depend on nondeterministic/system state not modeled in Remill tester state. `rdfsbase.txt` is fixed by Remill submodule commit `60cf744` and passes `1,040` rows with the tester's zero FS-base state. |
 | Descriptor/control-state reads | `./build-release/remill-tester 3975WX/lar.txt 3975WX/lsl.txt 3975WX/smsw.txt --execute` | skipped as `descriptor_state_unsupported`; combined triage run had `108,019` skips | Requires descriptor-table/control-register state modeling before comparison. |
 
 ## Timeouts / long sweeps
