@@ -192,9 +192,30 @@ bool IsEnvironmentReadUnsupported(const XedMetadata &metadata) {
   return unsupported_iclasses.count(metadata.iclass) != 0;
 }
 
-bool IsDescriptorStateUnsupported(const XedMetadata &metadata) {
-  static const std::set<std::string> unsupported_iclasses = {"LAR", "LSL"};
-  return unsupported_iclasses.count(metadata.iclass) != 0;
+bool HasVariableDescriptorSelector(const ExpectationRow &row) {
+  for (const auto &[raw_key, value] : row.initial_state) {
+    const auto key = CanonicalStateKey(raw_key);
+    if (!IsScalarRegister(key)) {
+      continue;
+    }
+    const auto selector = static_cast<std::uint16_t>(value & 0xffffu);
+    if (selector == 0x50u || selector == 0x51u) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool IsDescriptorStateUnsupported(const XedMetadata &metadata,
+                                  const ExpectationRow &row) {
+  if (metadata.iclass == "LAR" || metadata.iclass == "LSL") {
+    // The raw 3975WX corpus includes a few rows for per-CPU/system descriptor
+    // selectors (e.g. TSS/LDT selectors 0x50/0x51) whose access rights/limits
+    // vary with host descriptor-table state that is not serialized in the row.
+    // Fixed user code/data selectors are modeled by Remill and can run.
+    return HasVariableDescriptorSelector(row);
+  }
+  return false;
 }
 
 bool IsApproximateFpUnsupported(const XedMetadata &metadata) {
@@ -720,7 +741,7 @@ int Run(const Options &options) {
           WriteSkipJson(skip_report, path, row, reason);
           continue;
         }
-        if (IsDescriptorStateUnsupported(metadata)) {
+        if (IsDescriptorStateUnsupported(metadata, row)) {
           const std::string reason = "descriptor_state_unsupported";
           RecordSkip(summary, reason);
           WriteSkipJson(skip_report, path, row, reason);

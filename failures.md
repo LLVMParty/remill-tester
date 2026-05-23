@@ -155,7 +155,7 @@ The earlier `rol`/`ror` CF mismatches are also fixed in the comparator by dynami
 
 ## Current skips / unsupported areas
 
-These are not counted as semantic failures by the runner (`execution_failed=0`), but they are outstanding coverage gaps. A combined Release audit over the `94` files currently absent from `TESTED.md` selected `528,503` rows: `58,832 passed, 0 failed, 469,671 skipped`.
+These are not counted as semantic failures by the runner (`execution_failed=0`), but they are outstanding coverage gaps. A combined Release audit over the `94` files currently absent from `TESTED.md` selected `528,503` rows: `164,709 passed, 0 failed, 363,794 skipped`.
 
 | Area | Example command | Current result | Notes |
 |---|---|---|---|
@@ -165,7 +165,7 @@ These are not counted as semantic failures by the runner (`execution_failed=0`),
 | MMX state unsupported in raw corpus | combined audit over `movq2dq`, `cvtpi2pd`, and `cvtpi2ps` | `54,272 skipped`; `mmx_state_unsupported=54,272` | `/Users/admin/Projects/x86Tester/src/execution/execution.cpp` does not expose MMX registers in `getContextReg`, so raw rows with `mm0`..`mm7` do not provide a trustworthy hardware MMX oracle. |
 | Privileged/IO instructions | e.g. `./build-release/remill-tester 3975WX/cli.txt 3975WX/lmsw.txt --execute --limit-states 1000` | skipped as `privileged_or_io_unsupported` | Avoids privileged host/JIT paths. |
 | Environment reads | `./build-release/remill-tester 3975WX/rdtsc.txt 3975WX/rdtscp.txt 3975WX/rdpmc.txt 3975WX/rdpru.txt 3975WX/rdrand.txt 3975WX/rdseed.txt 3975WX/rdpid.txt 3975WX/rdgsbase.txt --execute` | skipped as `environment_read_unsupported`; combined triage run had `10,336` skips | Results depend on nondeterministic/system state not modeled in Remill tester state. `rdfsbase.txt` is fixed by Remill submodule commit `60cf744` and passes `1,040` rows with the tester's zero FS-base state; `rdsspd.txt`/`rdsspq.txt` are fixed by Remill submodule commit `2044e40` and pass `720`/`1,472` rows as disabled-CET no-ops. |
-| Descriptor/control-state reads | `./build-release/remill-tester 3975WX/lar.txt 3975WX/lsl.txt --execute` | skipped as `descriptor_state_unsupported`; combined triage run had `106,243` skips | Requires descriptor-table/control-register state modeling before comparison. `smsw.txt` is fixed by Remill submodule commit `7faf30b` and passes `1,776` rows with the corpus-observed machine-status word model. |
+| Descriptor/control-state reads | `./build-release/remill-tester 3975WX/lar.txt 3975WX/lsl.txt --execute --stop-on-first-fail` | `105,877 passed, 0 failed, 366 skipped`; latest combined audit has `descriptor_state_unsupported=366` | Remill submodule commit `4b46adc` covers fixed 3975WX user code/data selectors for `LAR`/`LSL`; the remaining `366` rows use variable per-CPU/system descriptor selectors (`0x50`/`0x51`) whose descriptor-table state is not serialized. `smsw.txt` is fixed by Remill submodule commit `7faf30b` and passes `1,776` rows with the corpus-observed machine-status word model. |
 
 ## Timeouts / long sweeps
 
