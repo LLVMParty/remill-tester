@@ -175,8 +175,9 @@ bool IsFpuUnsupported(const XedMetadata &metadata, const ExpectationRow &row) {
       metadata.iclass == "FCHS" || metadata.iclass.rfind("FCMOV", 0) == 0) {
     return HasUnsupportedX87StackValue(row);
   }
-  if (metadata.iclass == "FNSTSW" || metadata.iclass == "FNINIT" ||
-      metadata.iclass == "FNCLEX" || metadata.iclass == "FDECSTP" ||
+  if (metadata.iclass == "FXAM" || metadata.iclass == "FNSTSW" ||
+      metadata.iclass == "FNINIT" || metadata.iclass == "FNCLEX" ||
+      metadata.iclass == "FDECSTP" ||
       metadata.iclass == "FINCSTP" || metadata.iclass == "FFREE" ||
       metadata.iclass == "FFREEP") {
     return false;
