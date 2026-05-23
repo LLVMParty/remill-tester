@@ -37,6 +37,12 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/rdsspq.txt` | `./build-release/remill-tester 3975WX/rdsspq.txt --execute --stop-on-first-fail` | 1,472 passed |
 | `3975WX/smsw.txt` | `./build-release/remill-tester 3975WX/smsw.txt --execute --stop-on-first-fail` | 1,776 passed |
 | `3975WX/fnstsw.txt` | `./build-release/remill-tester 3975WX/fnstsw.txt --execute --stop-on-first-fail` | 49 passed |
+| `3975WX/fninit.txt` | `./build-release/remill-tester 3975WX/fninit.txt --execute --stop-on-first-fail` | 11 passed |
+| `3975WX/fnclex.txt` | `./build-release/remill-tester 3975WX/fnclex.txt --execute --stop-on-first-fail` | 16 passed |
+| `3975WX/fincstp.txt` | `./build-release/remill-tester 3975WX/fincstp.txt --execute --stop-on-first-fail` | 20 passed |
+| `3975WX/fdecstp.txt` | `./build-release/remill-tester 3975WX/fdecstp.txt --execute --stop-on-first-fail` | 23 passed |
+| `3975WX/ffree.txt` | `./build-release/remill-tester 3975WX/ffree.txt --execute --stop-on-first-fail` | 232 passed |
+| `3975WX/ffreep.txt` | `./build-release/remill-tester 3975WX/ffreep.txt --execute --stop-on-first-fail` | 232 passed |
 | `3975WX/test.txt` | `./build/remill-tester 3975WX/test.txt --execute --stop-on-first-fail` | 10,672 passed |
 | `3975WX/inc.txt` | `./build/remill-tester 3975WX/inc.txt --execute --stop-on-first-fail` | 3,064 passed |
 | `3975WX/dec.txt` | `./build/remill-tester 3975WX/dec.txt --execute --stop-on-first-fail` | 3,288 passed |

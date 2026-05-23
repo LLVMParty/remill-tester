@@ -117,6 +117,11 @@ bool __remill_compare_uge(bool result);
 bool __remill_compare_eq(bool result);
 bool __remill_compare_neq(bool result);
 
+void __remill_fpu_exception_clear(std::int32_t clear_mask);
+std::int32_t __remill_fpu_exception_test(std::int32_t test_mask);
+void __remill_fpu_set_rounding(std::int32_t round_mode);
+std::int32_t __remill_fpu_get_rounding();
+
 Memory *__remill_barrier_load_load(Memory *memory);
 Memory *__remill_barrier_load_store(Memory *memory);
 Memory *__remill_barrier_store_load(Memory *memory);

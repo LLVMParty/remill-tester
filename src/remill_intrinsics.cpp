@@ -132,6 +132,10 @@ void RegisterRemillIntrinsicSymbols() {
     REMILL_TESTER_ADD_SYMBOL(__remill_compare_uge)
     REMILL_TESTER_ADD_SYMBOL(__remill_compare_eq)
     REMILL_TESTER_ADD_SYMBOL(__remill_compare_neq)
+    REMILL_TESTER_ADD_SYMBOL(__remill_fpu_exception_clear)
+    REMILL_TESTER_ADD_SYMBOL(__remill_fpu_exception_test)
+    REMILL_TESTER_ADD_SYMBOL(__remill_fpu_set_rounding)
+    REMILL_TESTER_ADD_SYMBOL(__remill_fpu_get_rounding)
     REMILL_TESTER_ADD_SYMBOL(__remill_barrier_load_load)
     REMILL_TESTER_ADD_SYMBOL(__remill_barrier_load_store)
     REMILL_TESTER_ADD_SYMBOL(__remill_barrier_store_load)
@@ -279,6 +283,11 @@ bool __remill_compare_ugt(bool result) { return result; }
 bool __remill_compare_uge(bool result) { return result; }
 bool __remill_compare_eq(bool result) { return result; }
 bool __remill_compare_neq(bool result) { return result; }
+
+void __remill_fpu_exception_clear(std::int32_t) {}
+std::int32_t __remill_fpu_exception_test(std::int32_t) { return 0; }
+void __remill_fpu_set_rounding(std::int32_t) {}
+std::int32_t __remill_fpu_get_rounding() { return 0; }
 
 Memory *__remill_barrier_load_load(Memory *memory) { return memory; }
 Memory *__remill_barrier_load_store(Memory *memory) { return memory; }

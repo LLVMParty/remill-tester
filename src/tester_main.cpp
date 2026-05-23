@@ -132,7 +132,10 @@ bool RequiresMemoryOracle(const XedMetadata &metadata) {
 }
 
 bool IsFpuUnsupported(const XedMetadata &metadata) {
-  if (metadata.iclass == "FNSTSW") {
+  if (metadata.iclass == "FNSTSW" || metadata.iclass == "FNINIT" ||
+      metadata.iclass == "FNCLEX" || metadata.iclass == "FDECSTP" ||
+      metadata.iclass == "FINCSTP" || metadata.iclass == "FFREE" ||
+      metadata.iclass == "FFREEP") {
     return false;
   }
   return metadata.extension == "X87" || metadata.category.rfind("X87", 0) == 0;

@@ -10,7 +10,7 @@
 namespace remill_tester {
 namespace {
 
-enum class ByteRegisterKind { kVector, kMmx };
+enum class ByteRegisterKind { kVector, kMmx, kX87Stack };
 
 struct ByteRegisterInfo {
   ByteRegisterKind kind = ByteRegisterKind::kVector;
@@ -58,6 +58,21 @@ ParseByteRegisterName(const std::string &raw_name) {
       return std::nullopt;
     }
     return ByteRegisterInfo{ByteRegisterKind::kMmx, index, 8};
+  }
+
+  if (name.rfind("st", 0) == 0) {
+    const auto index_text = name.substr(2);
+    if (index_text.empty()) {
+      return std::nullopt;
+    }
+    std::size_t index = 0;
+    const auto *begin = index_text.data();
+    const auto *end = index_text.data() + index_text.size();
+    const auto [ptr, ec] = std::from_chars(begin, end, index, 10);
+    if (ec != std::errc{} || ptr != end || index >= 8) {
+      return std::nullopt;
+    }
+    return ByteRegisterInfo{ByteRegisterKind::kX87Stack, index, 10};
   }
 
   return std::nullopt;
@@ -151,6 +166,7 @@ bool IsByteRegister(const std::string &name) {
 void SetX87Status(State &state, std::uint64_t value) {
   const auto status = static_cast<std::uint16_t>(value & 0x7f7fu);
   state.x87.fxsave.swd.flat = status;
+  state.x87.fsave.swd.flat = status;
   state.sw.ie = (status >> 0u) & 1u;
   state.sw.de = (status >> 1u) & 1u;
   state.sw.ze = (status >> 2u) & 1u;
@@ -165,7 +181,19 @@ void SetX87Status(State &state, std::uint64_t value) {
 }
 
 std::uint64_t GetX87Status(const State &state) {
-  return state.x87.fxsave.swd.flat;
+  auto status = static_cast<std::uint16_t>(state.x87.fxsave.swd.flat & 0x3800u);
+  status |= static_cast<std::uint16_t>((state.sw.ie & 1u) << 0u);
+  status |= static_cast<std::uint16_t>((state.sw.de & 1u) << 1u);
+  status |= static_cast<std::uint16_t>((state.sw.ze & 1u) << 2u);
+  status |= static_cast<std::uint16_t>((state.sw.oe & 1u) << 3u);
+  status |= static_cast<std::uint16_t>((state.sw.ue & 1u) << 4u);
+  status |= static_cast<std::uint16_t>((state.sw.pe & 1u) << 5u);
+  status |= static_cast<std::uint16_t>((state.sw.sf & 1u) << 6u);
+  status |= static_cast<std::uint16_t>((state.sw.c0 & 1u) << 8u);
+  status |= static_cast<std::uint16_t>((state.sw.c1 & 1u) << 9u);
+  status |= static_cast<std::uint16_t>((state.sw.c2 & 1u) << 10u);
+  status |= static_cast<std::uint16_t>((state.sw.c3 & 1u) << 14u);
+  return status;
 }
 
 bool SetByteRegister(State &state, const std::string &name,
@@ -180,6 +208,9 @@ bool SetByteRegister(State &state, const std::string &name,
     return true;
   case ByteRegisterKind::kMmx:
     std::memcpy(&state.mmx.elems[info->index].val, bytes.data(), bytes.size());
+    return true;
+  case ByteRegisterKind::kX87Stack:
+    std::memcpy(&state.st.elems[info->index].val, bytes.data(), bytes.size());
     return true;
   }
   return false;
@@ -198,6 +229,9 @@ GetByteRegister(const State &state, const std::string &name) {
     return bytes;
   case ByteRegisterKind::kMmx:
     std::memcpy(bytes.data(), &state.mmx.elems[info->index].val, bytes.size());
+    return bytes;
+  case ByteRegisterKind::kX87Stack:
+    std::memcpy(bytes.data(), &state.st.elems[info->index].val, bytes.size());
     return bytes;
   }
   return std::nullopt;
