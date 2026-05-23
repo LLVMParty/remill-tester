@@ -111,6 +111,13 @@ The earlier `mulx` destination-ordering mismatch is fixed by Remill submodule co
 - A first attempt exposed non-aliasing destination reversal on `mulx r14d, r13d, r12d`.
 - After the fix, full Release `mulx.txt` passes: `1,520,573 passed, 0 failed, 0 skipped`.
 
+The earlier `shld`/`shrd` 16-bit wide-count mismatch is fixed by Remill submodule commit `5180828`:
+
+- Before the fix, `shld r9w, di, cl` with masked counts greater than 16 preserved the old destination and mismatched hardware results/flags.
+- After the fix, full Release runs pass:
+  - `shld.txt`: `585,136 passed, 0 failed, 0 skipped`
+  - `shrd.txt`: `580,799 passed, 0 failed, 0 skipped`
+
 The earlier `movzx`/`movsx`/`movsxd` issue is fixed by Remill submodule commit `d83d754` and parent commit `160f119`:
 
 - `./build-release/remill-tester 3975WX/movzx.txt --execute --stop-on-first-fail`
