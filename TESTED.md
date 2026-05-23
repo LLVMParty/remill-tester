@@ -8,6 +8,12 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 
 | Corpus | Command | Result |
 |---|---|---|
+| `3975WX/aesdec.txt` | `./build-release/remill-tester 3975WX/aesdec.txt --execute --stop-on-first-fail` | 64,488 passed |
+| `3975WX/aesdeclast.txt` | `./build-release/remill-tester 3975WX/aesdeclast.txt --execute --stop-on-first-fail` | 64,552 passed |
+| `3975WX/aesenc.txt` | `./build-release/remill-tester 3975WX/aesenc.txt --execute --stop-on-first-fail` | 64,664 passed |
+| `3975WX/aesenclast.txt` | `./build-release/remill-tester 3975WX/aesenclast.txt --execute --stop-on-first-fail` | 64,632 passed |
+| `3975WX/aesimc.txt` | `./build-release/remill-tester 3975WX/aesimc.txt --execute --stop-on-first-fail` | 64,320 passed |
+| `3975WX/aeskeygenassist.txt` | `./build-release/remill-tester 3975WX/aeskeygenassist.txt --execute --stop-on-first-fail` | 580,168 passed |
 | `3975WX/not.txt` | `./build/remill-tester 3975WX/not.txt --execute` | 2,632 passed |
 | `3975WX/xor.txt` | `./build/remill-tester 3975WX/xor.txt --execute --stop-on-first-fail` | 114,672 passed |
 | `3975WX/add.txt` | `./build/remill-tester 3975WX/add.txt --execute --stop-on-first-fail` | 117,756 passed |

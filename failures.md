@@ -135,6 +135,17 @@ The earlier `insertq` lift gap is fixed by Remill submodule commit `4277839`:
 - Before the fix, `insertq.txt` had `unsupported:remill_lift` skips for immediate-control and register-control SSE4A forms.
 - After the fix, full Release `insertq.txt` passes: `3,741,176 passed, 0 failed, 0 skipped`.
 
+The earlier AES-NI lift gaps are fixed by Remill submodule commit `298519c`:
+
+- Before the fix, limited 20-row samples for `aesenc`, `aesdec`, `aesenclast`, `aesdeclast`, `aesimc`, and `aeskeygenassist` skipped as `unsupported:remill_lift`.
+- After the fix, full Release runs pass:
+  - `aesenc.txt`: `64,664 passed, 0 failed, 0 skipped`
+  - `aesenclast.txt`: `64,632 passed, 0 failed, 0 skipped`
+  - `aesdec.txt`: `64,488 passed, 0 failed, 0 skipped`
+  - `aesdeclast.txt`: `64,552 passed, 0 failed, 0 skipped`
+  - `aesimc.txt`: `64,320 passed, 0 failed, 0 skipped`
+  - `aeskeygenassist.txt`: `580,168 passed, 0 failed, 0 skipped`
+
 The earlier `movzx`/`movsx`/`movsxd` issue is fixed by Remill submodule commit `d83d754` and parent commit `160f119`:
 
 - `./build-release/remill-tester 3975WX/movzx.txt --execute --stop-on-first-fail`
@@ -154,7 +165,6 @@ These are not counted as semantic failures by the runner (`execution_failed=0`),
 |---|---|---|---|
 | Raw memory-oracle gaps | `./build-release/remill-tester 3975WX/xlat.txt --execute --stop-on-first-fail` | `0 passed, 0 failed, 16 skipped`; `memory_state_missing=16` | Raw `3975WX` rows do not serialize table memory contents. Needs normalized `mem[...]` input/output cells or generator changes. |
 | Remill lift unsupported: packed single reciprocal sqrt | `./build-release/remill-tester 3975WX/rsqrtps.txt --execute --limit-states 20 --stop-on-first-fail` | `20 skipped`; `unsupported:remill_lift=20` | Scalar `rsqrtss` lifts but currently mismatches the 3975WX approximate result. |
-| Remill lift unsupported: AES | `./build-release/remill-tester 3975WX/aesenc.txt --execute --limit-states 20 --stop-on-first-fail` | `20 skipped`; `unsupported:remill_lift=20` | Also observed for `aesdec`. |
 | x87/FPU state unsupported | `./build-release/remill-tester 3975WX/fadd.txt --execute --limit-states 5 --stop-on-first-fail` | skipped as `fpu_state_unsupported` | Requires x87 state bridge and safe JIT support before comparing. |
 | MMX state unsupported in raw corpus | `./build-release/remill-tester 3975WX/movq2dq.txt --execute --stop-on-first-fail` | `0 passed, 0 failed, 16,128 skipped`; `mmx_state_unsupported=16,128` | `/Users/admin/Projects/x86Tester/src/execution/execution.cpp` does not expose MMX registers in `getContextReg`, so raw rows with `mm0`..`mm7` do not provide a trustworthy hardware MMX oracle. Also observed: `cvtpi2pd.txt` skips `16,128`, `cvtpi2ps.txt` skips `22,016`. |
 | Privileged/IO instructions | e.g. `./build-release/remill-tester 3975WX/cli.txt 3975WX/lmsw.txt --execute --limit-states 1000` | skipped as `privileged_or_io_unsupported` | Avoids privileged host/JIT paths. |
