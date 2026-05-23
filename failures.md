@@ -157,7 +157,9 @@ These are not counted as semantic failures by the runner (`execution_failed=0`),
 | Remill lift unsupported: AES | `./build-release/remill-tester 3975WX/aesenc.txt --execute --limit-states 20 --stop-on-first-fail` | `20 skipped`; `unsupported:remill_lift=20` | Also observed for `aesdec`. |
 | x87/FPU state unsupported | `./build-release/remill-tester 3975WX/fadd.txt --execute --limit-states 5 --stop-on-first-fail` | skipped as `fpu_state_unsupported` | Requires x87 state bridge and safe JIT support before comparing. |
 | MMX state unsupported in raw corpus | `./build-release/remill-tester 3975WX/movq2dq.txt --execute --stop-on-first-fail` | `0 passed, 0 failed, 16,128 skipped`; `mmx_state_unsupported=16,128` | `/Users/admin/Projects/x86Tester/src/execution/execution.cpp` does not expose MMX registers in `getContextReg`, so raw rows with `mm0`..`mm7` do not provide a trustworthy hardware MMX oracle. Also observed: `cvtpi2pd.txt` skips `16,128`, `cvtpi2ps.txt` skips `22,016`. |
-| Privileged/IO/system instructions | e.g. `cli`, `rdtsc` limited runs | skipped as `privileged_or_io_unsupported` | Avoids host JIT fatal paths and nondeterministic system semantics. |
+| Privileged/IO instructions | e.g. `./build-release/remill-tester 3975WX/cli.txt 3975WX/lmsw.txt --execute --limit-states 1000` | skipped as `privileged_or_io_unsupported` | Avoids privileged host/JIT paths. |
+| Environment reads | `./build-release/remill-tester 3975WX/rdtsc.txt 3975WX/rdtscp.txt 3975WX/rdpmc.txt 3975WX/rdpru.txt 3975WX/rdrand.txt 3975WX/rdseed.txt 3975WX/rdpid.txt 3975WX/rdfsbase.txt 3975WX/rdgsbase.txt 3975WX/rdsspd.txt 3975WX/rdsspq.txt --execute` | skipped as `environment_read_unsupported`; combined triage run had `13,568` skips | Results depend on nondeterministic/system state not modeled in Remill tester state. |
+| Descriptor/control-state reads | `./build-release/remill-tester 3975WX/lar.txt 3975WX/lsl.txt 3975WX/smsw.txt --execute` | skipped as `descriptor_state_unsupported`; combined triage run had `108,019` skips | Requires descriptor-table/control-register state modeling before comparison. |
 
 ## Timeouts / long sweeps
 

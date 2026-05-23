@@ -171,11 +171,25 @@ bool UsesMmxState(const ExpectationRow &row) {
 
 bool IsPrivilegedOrIoUnsupported(const XedMetadata &metadata) {
   static const std::set<std::string> unsupported_iclasses = {
-      "CLI",  "STI",   "HLT",   "IN",     "OUT",    "INSB",  "INSW",
-      "INSD", "OUTSB", "OUTSW", "OUTSD",  "LGDT",   "LIDT",  "LLDT",
-      "LTR",  "LMSW",  "CLTS",  "INVLPG", "WBINVD", "RDMSR", "WRMSR"};
-  return metadata.category == "IO" || metadata.category == "SYSTEM" ||
+      "CLI",   "STI",   "HLT",   "IN",     "OUT",    "INSB",
+      "INSW",  "INSD",  "OUTSB", "OUTSW",  "OUTSD",  "LGDT",
+      "LIDT",  "LLDT",  "LTR",   "LMSW",   "CLTS",   "INVLPG",
+      "WBINVD", "RDMSR", "WRMSR", "SWAPGS", "XSETBV"};
+  return metadata.category == "IO" ||
          unsupported_iclasses.count(metadata.iclass) != 0;
+}
+
+bool IsEnvironmentReadUnsupported(const XedMetadata &metadata) {
+  static const std::set<std::string> unsupported_iclasses = {
+      "RDTSC", "RDTSCP", "RDPMC", "RDPRU",  "RDRAND", "RDSEED",
+      "RDPID", "RDFSBASE", "RDGSBASE", "RDSSPD", "RDSSPQ"};
+  return unsupported_iclasses.count(metadata.iclass) != 0;
+}
+
+bool IsDescriptorStateUnsupported(const XedMetadata &metadata) {
+  static const std::set<std::string> unsupported_iclasses = {"LAR", "LSL",
+                                                            "SMSW"};
+  return unsupported_iclasses.count(metadata.iclass) != 0;
 }
 
 void RecordSkip(Summary &summary, const std::string &reason) {
@@ -680,6 +694,18 @@ int Run(const Options &options) {
         }
         if (IsPrivilegedOrIoUnsupported(metadata)) {
           const std::string reason = "privileged_or_io_unsupported";
+          RecordSkip(summary, reason);
+          WriteSkipJson(skip_report, path, row, reason);
+          continue;
+        }
+        if (IsEnvironmentReadUnsupported(metadata)) {
+          const std::string reason = "environment_read_unsupported";
+          RecordSkip(summary, reason);
+          WriteSkipJson(skip_report, path, row, reason);
+          continue;
+        }
+        if (IsDescriptorStateUnsupported(metadata)) {
+          const std::string reason = "descriptor_state_unsupported";
           RecordSkip(summary, reason);
           WriteSkipJson(skip_report, path, row, reason);
           continue;
