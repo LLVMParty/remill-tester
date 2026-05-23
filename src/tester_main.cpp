@@ -187,8 +187,7 @@ bool IsEnvironmentReadUnsupported(const XedMetadata &metadata) {
 }
 
 bool IsDescriptorStateUnsupported(const XedMetadata &metadata) {
-  static const std::set<std::string> unsupported_iclasses = {"LAR", "LSL",
-                                                            "SMSW"};
+  static const std::set<std::string> unsupported_iclasses = {"LAR", "LSL"};
   return unsupported_iclasses.count(metadata.iclass) != 0;
 }
 

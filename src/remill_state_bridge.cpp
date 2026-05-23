@@ -224,6 +224,12 @@ bool ApplyInitialState(
     const auto key = CanonicalStateKey(raw_key);
     if (key == "flag") {
       SetFlags(state, value);
+    } else if (key == "cr0") {
+      // The raw corpus may include attempted control-register inputs for
+      // system-state probes such as SMSW, but Remill's public State does not
+      // currently carry CR0. The executed host CR0 value is modeled in the
+      // instruction semantics for supported probes, so tolerate this field.
+      continue;
     } else if (IsScalarRegister(key)) {
       SetScalarRegister(state, key, value);
     } else if (IsByteRegister(key)) {
@@ -238,7 +244,7 @@ bool ApplyInitialState(
 
   for (const auto &[raw_key, bytes] : initial_bytes) {
     const auto key = CanonicalStateKey(raw_key);
-    if (key == "flag" || IsScalarRegister(key)) {
+    if (key == "flag" || key == "cr0" || IsScalarRegister(key)) {
       continue;
     }
     if (IsByteRegister(key)) {

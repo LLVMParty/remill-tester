@@ -35,6 +35,7 @@ All commands below completed with `execution_failed=0` and `execution_skipped=0`
 | `3975WX/rdfsbase.txt` | `./build-release/remill-tester 3975WX/rdfsbase.txt --execute --stop-on-first-fail` | 1,040 passed |
 | `3975WX/rdsspd.txt` | `./build-release/remill-tester 3975WX/rdsspd.txt --execute --stop-on-first-fail` | 720 passed |
 | `3975WX/rdsspq.txt` | `./build-release/remill-tester 3975WX/rdsspq.txt --execute --stop-on-first-fail` | 1,472 passed |
+| `3975WX/smsw.txt` | `./build-release/remill-tester 3975WX/smsw.txt --execute --stop-on-first-fail` | 1,776 passed |
 | `3975WX/test.txt` | `./build/remill-tester 3975WX/test.txt --execute --stop-on-first-fail` | 10,672 passed |
 | `3975WX/inc.txt` | `./build/remill-tester 3975WX/inc.txt --execute --stop-on-first-fail` | 3,064 passed |
 | `3975WX/dec.txt` | `./build/remill-tester 3975WX/dec.txt --execute --stop-on-first-fail` | 3,288 passed |
