@@ -174,7 +174,8 @@ bool HasUnsupportedX87StackValue(const ExpectationRow &row) {
 
 bool IsFpuUnsupported(const XedMetadata &metadata, const ExpectationRow &row) {
   if (metadata.iclass == "FXCH" || metadata.iclass == "FABS" ||
-      metadata.iclass == "FCHS" || metadata.iclass.rfind("FCMOV", 0) == 0) {
+      metadata.iclass == "FCHS" || metadata.iclass == "FST" ||
+      metadata.iclass.rfind("FCMOV", 0) == 0) {
     return HasUnsupportedX87StackValue(row);
   }
   if (metadata.iclass == "FXAM" || metadata.iclass == "FNSTSW" ||
