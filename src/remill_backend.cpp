@@ -250,6 +250,9 @@ RemillBackend::Compile(const ExpectationRow &row, std::string &error) {
     return nullptr;
   }
   auto jit = std::move(*jit_or_error);
+  if (!DefineRemillIntrinsicSymbols(*jit, error)) {
+    return nullptr;
+  }
 
   auto generator =
       llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(

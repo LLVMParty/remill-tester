@@ -7,7 +7,10 @@
 #include <string>
 
 #include <llvm/ADT/StringRef.h>
+#include <llvm/ExecutionEngine/Orc/AbsoluteSymbols.h>
+#include <llvm/ExecutionEngine/Orc/LLJIT.h>
 #include <llvm/Support/DynamicLibrary.h>
+#include <llvm/Support/Error.h>
 
 namespace {
 
@@ -159,6 +162,102 @@ void RegisterRemillIntrinsicSymbols() {
 
 #undef REMILL_TESTER_ADD_SYMBOL
   });
+}
+
+bool DefineRemillIntrinsicSymbols(llvm::orc::LLJIT &jit, std::string &error) {
+  llvm::orc::SymbolMap symbols;
+  const auto add_symbol = [&](llvm::StringRef name, auto *ptr) {
+    symbols[jit.mangleAndIntern(name)] =
+        llvm::orc::ExecutorSymbolDef::fromPtr(ptr);
+  };
+
+#define REMILL_TESTER_ADD_SYMBOL(name) add_symbol(#name, &name);
+  REMILL_TESTER_ADD_SYMBOL(__remill_read_memory_8)
+  REMILL_TESTER_ADD_SYMBOL(__remill_read_memory_16)
+  REMILL_TESTER_ADD_SYMBOL(__remill_read_memory_32)
+  REMILL_TESTER_ADD_SYMBOL(__remill_read_memory_64)
+  REMILL_TESTER_ADD_SYMBOL(__remill_write_memory_8)
+  REMILL_TESTER_ADD_SYMBOL(__remill_write_memory_16)
+  REMILL_TESTER_ADD_SYMBOL(__remill_write_memory_32)
+  REMILL_TESTER_ADD_SYMBOL(__remill_write_memory_64)
+  REMILL_TESTER_ADD_SYMBOL(__remill_undefined_8)
+  REMILL_TESTER_ADD_SYMBOL(__remill_undefined_16)
+  REMILL_TESTER_ADD_SYMBOL(__remill_undefined_32)
+  REMILL_TESTER_ADD_SYMBOL(__remill_undefined_64)
+  REMILL_TESTER_ADD_SYMBOL(__remill_compare_exchange_memory_8)
+  REMILL_TESTER_ADD_SYMBOL(__remill_compare_exchange_memory_16)
+  REMILL_TESTER_ADD_SYMBOL(__remill_compare_exchange_memory_32)
+  REMILL_TESTER_ADD_SYMBOL(__remill_compare_exchange_memory_64)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_add_8)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_add_16)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_add_32)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_add_64)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_sub_8)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_sub_16)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_sub_32)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_sub_64)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_and_8)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_and_16)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_and_32)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_and_64)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_or_8)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_or_16)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_or_32)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_or_64)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_xor_8)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_xor_16)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_xor_32)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_xor_64)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_nand_8)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_nand_16)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_nand_32)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fetch_and_nand_64)
+  REMILL_TESTER_ADD_SYMBOL(__remill_flag_computation_zero)
+  REMILL_TESTER_ADD_SYMBOL(__remill_flag_computation_sign)
+  REMILL_TESTER_ADD_SYMBOL(__remill_flag_computation_overflow)
+  REMILL_TESTER_ADD_SYMBOL(__remill_flag_computation_carry)
+  REMILL_TESTER_ADD_SYMBOL(__remill_compare_sle)
+  REMILL_TESTER_ADD_SYMBOL(__remill_compare_slt)
+  REMILL_TESTER_ADD_SYMBOL(__remill_compare_sge)
+  REMILL_TESTER_ADD_SYMBOL(__remill_compare_sgt)
+  REMILL_TESTER_ADD_SYMBOL(__remill_compare_ule)
+  REMILL_TESTER_ADD_SYMBOL(__remill_compare_ult)
+  REMILL_TESTER_ADD_SYMBOL(__remill_compare_ugt)
+  REMILL_TESTER_ADD_SYMBOL(__remill_compare_uge)
+  REMILL_TESTER_ADD_SYMBOL(__remill_compare_eq)
+  REMILL_TESTER_ADD_SYMBOL(__remill_compare_neq)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fpu_exception_clear)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fpu_exception_test)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fpu_set_rounding)
+  REMILL_TESTER_ADD_SYMBOL(__remill_fpu_get_rounding)
+  REMILL_TESTER_ADD_SYMBOL(__remill_barrier_load_load)
+  REMILL_TESTER_ADD_SYMBOL(__remill_barrier_load_store)
+  REMILL_TESTER_ADD_SYMBOL(__remill_barrier_store_load)
+  REMILL_TESTER_ADD_SYMBOL(__remill_barrier_store_store)
+  REMILL_TESTER_ADD_SYMBOL(__remill_atomic_begin)
+  REMILL_TESTER_ADD_SYMBOL(__remill_atomic_end)
+  REMILL_TESTER_ADD_SYMBOL(__remill_delay_slot_begin)
+  REMILL_TESTER_ADD_SYMBOL(__remill_delay_slot_end)
+  REMILL_TESTER_ADD_SYMBOL(__remill_error)
+  REMILL_TESTER_ADD_SYMBOL(__remill_missing_block)
+  REMILL_TESTER_ADD_SYMBOL(__remill_function_call)
+  REMILL_TESTER_ADD_SYMBOL(__remill_function_return)
+  REMILL_TESTER_ADD_SYMBOL(__remill_jump)
+  REMILL_TESTER_ADD_SYMBOL(__remill_async_hyper_call)
+  REMILL_TESTER_ADD_SYMBOL(__remill_read_io_port_8)
+  REMILL_TESTER_ADD_SYMBOL(__remill_read_io_port_16)
+  REMILL_TESTER_ADD_SYMBOL(__remill_read_io_port_32)
+  REMILL_TESTER_ADD_SYMBOL(__remill_write_io_port_8)
+  REMILL_TESTER_ADD_SYMBOL(__remill_write_io_port_16)
+  REMILL_TESTER_ADD_SYMBOL(__remill_write_io_port_32)
+#undef REMILL_TESTER_ADD_SYMBOL
+
+  if (auto define_error = jit.getMainJITDylib().define(
+          llvm::orc::absoluteSymbols(std::move(symbols)))) {
+    error = llvm::toString(std::move(define_error));
+    return false;
+  }
+  return true;
 }
 
 } // namespace remill_tester

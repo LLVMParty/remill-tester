@@ -1,12 +1,18 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 struct Memory;
 struct State;
 
+namespace llvm::orc {
+class LLJIT;
+}
+
 namespace remill_tester {
 void RegisterRemillIntrinsicSymbols();
+bool DefineRemillIntrinsicSymbols(llvm::orc::LLJIT &jit, std::string &error);
 }
 
 extern "C" {
