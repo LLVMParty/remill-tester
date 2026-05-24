@@ -15,37 +15,6 @@ REMILL_ENABLE_INSTALL_TARGET = false
 [subdir."dependencies/remill"]
 [subdir.helpers]
 
-[target.remill-example]
-type = "executable"
-sources = ["src/example.cpp"]
-link-libraries = ["::LLVM-Wrapper", "::remill"]
-cmake-after = """
-if(WIN32)
-    # Make the executable runnable from the build tree when using DLL-based
-    # LLVMParty Windows prebuilts. TARGET_RUNTIME_DLLS catches imported shared
-    # library dependencies; the explicit LLVM.dll copy is a fallback for LLVM
-    # packages that expose the DLL without modelling it on every component.
-    if(EXISTS "${LLVM_TOOLS_BINARY_DIR}/LLVM.dll")
-        add_custom_command(
-            TARGET remill-example
-            POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${LLVM_TOOLS_BINARY_DIR}/LLVM.dll"
-                $<TARGET_FILE_DIR:remill-example>
-        )
-    endif()
-
-    add_custom_command(
-        TARGET remill-example
-        POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_RUNTIME_DLLS:remill-example>
-            $<TARGET_FILE_DIR:remill-example>
-        COMMAND_EXPAND_LISTS
-    )
-endif()
-"""
-
 [target.remill-tester]
 type = "executable"
 sources = [
@@ -68,16 +37,53 @@ sources = [
     "src/flag_masks.hpp",
     "src/expectation.hpp",
 ]
+compile-features = ["cxx_std_17"]
+link-libraries = ["::LLVM-Wrapper", "::remill"]
 cmake-after = """
-target_compile_features(remill-tester PRIVATE cxx_std_17)
-target_include_directories(remill-tester PRIVATE
-    "${CMAKE_SOURCE_DIR}/dependencies/install/include"
-    "${CMAKE_SOURCE_DIR}/dependencies/remill/include"
-)
-target_link_libraries(remill-tester PRIVATE
-    LLVM-Wrapper
-    remill
-    "${CMAKE_SOURCE_DIR}/dependencies/install/lib/libxed.a"
-)
 add_dependencies(remill-tester amd64)
+
+enable_testing()
+
+add_test(NAME remill-tester.self-test
+    COMMAND $<TARGET_FILE:remill-tester> --self-test
+)
+set_tests_properties(remill-tester.self-test PROPERTIES
+    TIMEOUT 30
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME remill-tester.smoke
+    COMMAND $<TARGET_FILE:remill-tester>
+            "${CMAKE_SOURCE_DIR}/tests/smoke_3975wx.txt"
+            --execute --stop-on-first-fail
+)
+set_tests_properties(remill-tester.smoke PROPERTIES
+    TIMEOUT 30
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+if(WIN32)
+    # Make the executable runnable from the build tree when using DLL-based
+    # LLVMParty Windows prebuilts. TARGET_RUNTIME_DLLS catches imported shared
+    # library dependencies; the explicit LLVM.dll copy is a fallback for LLVM
+    # packages that expose the DLL without modelling it on every component.
+    if(EXISTS "${LLVM_TOOLS_BINARY_DIR}/LLVM.dll")
+        add_custom_command(
+            TARGET ${CMKR_TARGET}
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${LLVM_TOOLS_BINARY_DIR}/LLVM.dll"
+                $<TARGET_FILE_DIR:${CMKR_TARGET}>
+        )
+    endif()
+
+    add_custom_command(
+        TARGET ${CMKR_TARGET}
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_RUNTIME_DLLS:${CMKR_TARGET}>
+            $<TARGET_FILE_DIR:${CMKR_TARGET}>
+        COMMAND_EXPAND_LISTS
+    )
+endif()
 """

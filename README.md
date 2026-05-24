@@ -5,7 +5,7 @@ Simple template for using Remill. To understand remill, take a look at the follo
 - [Step-by-step guide on how Remill lifts an instruction](https://github.com/lifting-bits/remill/blob/master/docs/LIFE_OF_AN_INSTRUCTION.md)
 - [The design and architecture of Remill](https://github.com/lifting-bits/remill/blob/master/docs/DESIGN.md)
 
-The [`example.cpp`](src/example.cpp) lifts `mov rcx, 1337` and prints the lifted basic block function.
+The main target is `remill-tester`, a Remill/XED-backed x86Tester corpus runner. CI runs a fast curated smoke suite with representative scalar, memory, vector, crypto, exception, descriptor, and x87 cases.
 
 ## Setting up the environment
 
@@ -87,6 +87,7 @@ Then build the main project. Remill is compiled as part of this build from the `
 ```bash
 cmake -G Ninja -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
 cmake --build build
+ctest --test-dir build --output-on-failure --timeout 30
 ```
 
 For more information, see [`LLVMParty/packages/dependencies.md`](https://github.com/LLVMParty/packages/blob/main/dependencies.md).

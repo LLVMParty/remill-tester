@@ -58,61 +58,6 @@ endif()
 add_subdirectory(helpers)
 set(CMAKE_FOLDER ${CMKR_CMAKE_FOLDER})
 
-# Target: remill-example
-set(remill-example_SOURCES
-	cmake.toml
-	"src/example.cpp"
-)
-
-add_executable(remill-example)
-
-target_sources(remill-example PRIVATE ${remill-example_SOURCES})
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${remill-example_SOURCES})
-
-if(NOT TARGET LLVM-Wrapper)
-	message(FATAL_ERROR "Target \"LLVM-Wrapper\" referenced by \"remill-example\" does not exist!")
-endif()
-
-if(NOT TARGET remill)
-	message(FATAL_ERROR "Target \"remill\" referenced by \"remill-example\" does not exist!")
-endif()
-
-target_link_libraries(remill-example PRIVATE
-	LLVM-Wrapper
-	remill
-)
-
-get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
-if(NOT CMKR_VS_STARTUP_PROJECT)
-	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT remill-example)
-endif()
-
-set(CMKR_TARGET remill-example)
-if(WIN32)
-    # Make the executable runnable from the build tree when using DLL-based
-    # LLVMParty Windows prebuilts. TARGET_RUNTIME_DLLS catches imported shared
-    # library dependencies; the explicit LLVM.dll copy is a fallback for LLVM
-    # packages that expose the DLL without modelling it on every component.
-    if(EXISTS "${LLVM_TOOLS_BINARY_DIR}/LLVM.dll")
-        add_custom_command(
-            TARGET remill-example
-            POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${LLVM_TOOLS_BINARY_DIR}/LLVM.dll"
-                $<TARGET_FILE_DIR:remill-example>
-        )
-    endif()
-
-    add_custom_command(
-        TARGET remill-example
-        POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_RUNTIME_DLLS:remill-example>
-            $<TARGET_FILE_DIR:remill-example>
-        COMMAND_EXPAND_LISTS
-    )
-endif()
-
 # Target: remill-tester
 set(remill-tester_SOURCES
 	cmake.toml
@@ -141,20 +86,72 @@ add_executable(remill-tester)
 target_sources(remill-tester PRIVATE ${remill-tester_SOURCES})
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${remill-tester_SOURCES})
 
+target_compile_features(remill-tester PRIVATE
+	cxx_std_17
+)
+
+if(NOT TARGET LLVM-Wrapper)
+	message(FATAL_ERROR "Target \"LLVM-Wrapper\" referenced by \"remill-tester\" does not exist!")
+endif()
+
+if(NOT TARGET remill)
+	message(FATAL_ERROR "Target \"remill\" referenced by \"remill-tester\" does not exist!")
+endif()
+
+target_link_libraries(remill-tester PRIVATE
+	LLVM-Wrapper
+	remill
+)
+
 get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
 if(NOT CMKR_VS_STARTUP_PROJECT)
 	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT remill-tester)
 endif()
 
 set(CMKR_TARGET remill-tester)
-target_compile_features(remill-tester PRIVATE cxx_std_17)
-target_include_directories(remill-tester PRIVATE
-    "${CMAKE_SOURCE_DIR}/dependencies/install/include"
-    "${CMAKE_SOURCE_DIR}/dependencies/remill/include"
-)
-target_link_libraries(remill-tester PRIVATE
-    LLVM-Wrapper
-    remill
-    "${CMAKE_SOURCE_DIR}/dependencies/install/lib/libxed.a"
-)
 add_dependencies(remill-tester amd64)
+
+enable_testing()
+
+add_test(NAME remill-tester.self-test
+    COMMAND $<TARGET_FILE:remill-tester> --self-test
+)
+set_tests_properties(remill-tester.self-test PROPERTIES
+    TIMEOUT 30
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+add_test(NAME remill-tester.smoke
+    COMMAND $<TARGET_FILE:remill-tester>
+            "${CMAKE_SOURCE_DIR}/tests/smoke_3975wx.txt"
+            --execute --stop-on-first-fail
+)
+set_tests_properties(remill-tester.smoke PROPERTIES
+    TIMEOUT 30
+    WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+)
+
+if(WIN32)
+    # Make the executable runnable from the build tree when using DLL-based
+    # LLVMParty Windows prebuilts. TARGET_RUNTIME_DLLS catches imported shared
+    # library dependencies; the explicit LLVM.dll copy is a fallback for LLVM
+    # packages that expose the DLL without modelling it on every component.
+    if(EXISTS "${LLVM_TOOLS_BINARY_DIR}/LLVM.dll")
+        add_custom_command(
+            TARGET ${CMKR_TARGET}
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${LLVM_TOOLS_BINARY_DIR}/LLVM.dll"
+                $<TARGET_FILE_DIR:${CMKR_TARGET}>
+        )
+    endif()
+
+    add_custom_command(
+        TARGET ${CMKR_TARGET}
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_RUNTIME_DLLS:${CMKR_TARGET}>
+            $<TARGET_FILE_DIR:${CMKR_TARGET}>
+        COMMAND_EXPAND_LISTS
+    )
+endif()

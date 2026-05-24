@@ -49,9 +49,9 @@ jobs:
               "-DCMAKE_CXX_COMPILER=$PWD/dependencies/install/bin/clang++"
             cmake --build build
 
-        - name: Run example
+        - name: Run smoke tests
           run: |
-            build/remill-example
+            ctest --test-dir build --output-on-failure --timeout 30
 
   macos:
     # Skip building pull requests from the same repository
@@ -90,9 +90,9 @@ jobs:
               "-DCMAKE_CXX_COMPILER=$PWD/dependencies/install/bin/clang++"
             cmake --build build
 
-        - name: Run example
+        - name: Run smoke tests
           run: |
-            build/remill-example
+            ctest --test-dir build --output-on-failure --timeout 30
 
   windows:
     # Skip building pull requests from the same repository
@@ -139,7 +139,7 @@ jobs:
             cmake --build build
           shell: pwsh
 
-        - name: Run example
+        - name: Run smoke tests
           run: |
-            build/remill-example.exe
+            ctest --test-dir build --output-on-failure --timeout 30
           shell: pwsh
