@@ -227,7 +227,8 @@ bool IsPrivilegedOrIoUnsupported(const XedMetadata &metadata) {
       "CLI",   "STI",   "HLT",   "IN",     "OUT",    "INSB",
       "INSW",  "INSD",  "OUTSB", "OUTSW",  "OUTSD",  "LGDT",
       "LIDT",  "LLDT",  "LTR",   "LMSW",   "CLTS",   "INVLPG",
-      "WBINVD", "RDMSR", "WRMSR", "SWAPGS", "XSETBV"};
+      "WBINVD", "RDMSR", "WRMSR", "SWAPGS", "XSETBV", "CLAC",
+      "STAC"};
   return metadata.category == "IO" ||
          unsupported_iclasses.count(metadata.iclass) != 0;
 }
@@ -366,6 +367,22 @@ bool IsApproximateFpUnsupported(const XedMetadata &metadata) {
 bool IsShaUnsupported(const XedMetadata &metadata) {
   static const std::set<std::string> unsupported_iclasses;
   return unsupported_iclasses.count(metadata.iclass) != 0;
+}
+
+bool IsExpectedExceptionUnsupported(const XedMetadata &metadata,
+                                    const ExpectationRow &row) {
+  if (!row.expected_exception_kind.has_value()) {
+    return false;
+  }
+  return metadata.iclass != "DIV" && metadata.iclass != "IDIV";
+}
+
+bool IsAtomic128Unsupported(const XedMetadata &metadata) {
+  return metadata.iclass == "CMPXCHG16B";
+}
+
+bool IsPopfqUnsupported(const XedMetadata &metadata) {
+  return metadata.iclass == "POPFQ";
 }
 
 void RecordSkip(Summary &summary, const std::string &reason) {
@@ -882,6 +899,25 @@ int Run(const Options &options) {
         }
         if (IsDescriptorStateUnsupported(metadata, row)) {
           const std::string reason = "descriptor_state_unsupported";
+          RecordSkip(summary, reason);
+          WriteSkipJson(skip_report, path, row, reason);
+          continue;
+        }
+        if (IsExpectedExceptionUnsupported(metadata, row)) {
+          const std::string reason = "expected_exception_unsupported";
+          RecordSkip(summary, reason);
+          WriteSkipJson(skip_report, path, row, reason,
+                        *row.expected_exception_kind);
+          continue;
+        }
+        if (IsAtomic128Unsupported(metadata)) {
+          const std::string reason = "atomic128_unsupported";
+          RecordSkip(summary, reason);
+          WriteSkipJson(skip_report, path, row, reason);
+          continue;
+        }
+        if (IsPopfqUnsupported(metadata)) {
+          const std::string reason = "popfq_flag_state_unsupported";
           RecordSkip(summary, reason);
           WriteSkipJson(skip_report, path, row, reason);
           continue;
