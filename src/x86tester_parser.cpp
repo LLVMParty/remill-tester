@@ -73,15 +73,28 @@ InstructionHeader ParseHeader(const std::string &line) {
   return header;
 }
 
+bool IsByteStateKey(const std::string &key) {
+  const auto has_numeric_suffix = [&](const char *prefix) {
+    const auto prefix_size = std::char_traits<char>::length(prefix);
+    return key.size() > prefix_size && key.compare(0, prefix_size, prefix) == 0 &&
+           std::isdigit(static_cast<unsigned char>(key[prefix_size]));
+  };
+  return has_numeric_suffix("xmm") || has_numeric_suffix("ymm") ||
+         has_numeric_suffix("zmm") || has_numeric_suffix("mm") ||
+         has_numeric_suffix("st");
+}
+
 void AddStateValue(
     const std::string &raw_key, const std::string &raw_hex,
     std::map<std::string, std::uint64_t> &scalars,
     std::map<std::string, std::vector<std::uint8_t>> &bytes_map) {
   auto key = CanonicalStateKey(raw_key);
   auto bytes = ParseHexBytes(raw_hex);
-  bytes_map[key] = bytes;
   if (!bytes.empty() && bytes.size() <= 8) {
     scalars[key] = ReadLittleEndianScalar(bytes);
+  }
+  if (IsByteStateKey(key) || bytes.size() > 8) {
+    bytes_map[key] = std::move(bytes);
   }
 }
 
@@ -112,31 +125,36 @@ void ParseStateMap(const std::string &text,
     return;
   }
 
-  for (const auto &entry_text : Split(trimmed, ',')) {
-    const auto entry = Trim(entry_text);
-    if (entry.empty()) {
-      continue;
-    }
-
-    const auto sep = entry.find(":#");
-    if (sep == std::string::npos) {
-      throw std::runtime_error("state entry must be key:#hex: " + entry);
-    }
-    const auto key = entry.substr(0, sep);
-    const auto hex = entry.substr(sep + 2);
-    if (const auto memory_address = ParseMemoryAddressKey(key)) {
-      auto bytes = ParseHexBytes(hex);
-      if (input_memory != nullptr) {
-        AddMemoryInput(*input_memory, *memory_address, std::move(bytes));
-      } else if (output_memory != nullptr) {
-        AddMemoryOutput(*output_memory, *memory_address, std::move(bytes));
-      } else {
-        throw std::runtime_error("memory key is not valid in this state map: " +
-                                 key);
+  std::size_t start = 0;
+  while (start <= trimmed.size()) {
+    const auto pos = trimmed.find(',', start);
+    const auto entry = Trim(trimmed.substr(
+        start, pos == std::string::npos ? std::string::npos : pos - start));
+    if (!entry.empty()) {
+      const auto sep = entry.find(":#");
+      if (sep == std::string::npos) {
+        throw std::runtime_error("state entry must be key:#hex: " + entry);
       }
-      continue;
+      const auto key = entry.substr(0, sep);
+      const auto hex = entry.substr(sep + 2);
+      if (const auto memory_address = ParseMemoryAddressKey(key)) {
+        auto bytes = ParseHexBytes(hex);
+        if (input_memory != nullptr) {
+          AddMemoryInput(*input_memory, *memory_address, std::move(bytes));
+        } else if (output_memory != nullptr) {
+          AddMemoryOutput(*output_memory, *memory_address, std::move(bytes));
+        } else {
+          throw std::runtime_error(
+              "memory key is not valid in this state map: " + key);
+        }
+      } else {
+        AddStateValue(key, hex, scalars, bytes_map);
+      }
     }
-    AddStateValue(key, hex, scalars, bytes_map);
+    if (pos == std::string::npos) {
+      break;
+    }
+    start = pos + 1;
   }
 }
 
@@ -171,8 +189,13 @@ ExpectationRow ParseStateRow(const std::string &line,
   std::map<std::string, std::uint64_t> expected_scalars;
   std::map<std::string, std::vector<std::uint8_t>> expected_bytes;
 
-  for (const auto &segment_text : Split(trimmed, '|')) {
-    const auto segment = Trim(segment_text);
+  std::size_t segment_start = 0;
+  while (segment_start <= trimmed.size()) {
+    const auto segment_pos = trimmed.find('|', segment_start);
+    const auto segment = Trim(trimmed.substr(
+        segment_start, segment_pos == std::string::npos
+                           ? std::string::npos
+                           : segment_pos - segment_start));
     if (segment.rfind("in:", 0) == 0) {
       ParseStateMap(segment.substr(3), row.initial_state, row.initial_bytes,
                     &row.initial_memory, nullptr);
@@ -189,6 +212,10 @@ ExpectationRow ParseStateRow(const std::string &line,
     } else if (!segment.empty()) {
       throw std::runtime_error("unknown state row segment: " + segment);
     }
+    if (segment_pos == std::string::npos) {
+      break;
+    }
+    segment_start = segment_pos + 1;
   }
 
   if (!row.expected_final_state.has_value()) {
@@ -224,29 +251,47 @@ std::string ToUpper(std::string value) {
   return value;
 }
 
+namespace {
+
+int HexDigitValue(unsigned char ch) {
+  if (ch >= '0' && ch <= '9') {
+    return ch - '0';
+  }
+  if (ch >= 'a' && ch <= 'f') {
+    return ch - 'a' + 10;
+  }
+  if (ch >= 'A' && ch <= 'F') {
+    return ch - 'A' + 10;
+  }
+  return -1;
+}
+
+} // namespace
+
 std::vector<std::uint8_t> ParseHexBytes(const std::string &hex) {
-  auto clean = Trim(hex);
-  clean.erase(std::remove_if(clean.begin(), clean.end(),
-                             [](unsigned char ch) {
-                               return std::isspace(ch) || ch == '_';
-                             }),
-              clean.end());
-  if (clean.size() % 2 != 0) {
-    throw std::runtime_error("hex byte string must have even length: " + hex);
+  std::vector<std::uint8_t> bytes;
+  bytes.reserve(hex.size() / 2);
+
+  int high_nibble = -1;
+  for (const auto raw_ch : hex) {
+    const auto ch = static_cast<unsigned char>(raw_ch);
+    if (std::isspace(ch) || ch == '_') {
+      continue;
+    }
+    const auto digit = HexDigitValue(ch);
+    if (digit < 0) {
+      throw std::runtime_error("invalid hex byte string: " + hex);
+    }
+    if (high_nibble < 0) {
+      high_nibble = digit;
+    } else {
+      bytes.push_back(static_cast<std::uint8_t>((high_nibble << 4) | digit));
+      high_nibble = -1;
+    }
   }
 
-  std::vector<std::uint8_t> bytes;
-  bytes.reserve(clean.size() / 2);
-  for (std::size_t i = 0; i < clean.size(); i += 2) {
-    unsigned int value = 0;
-    const auto pair = clean.substr(i, 2);
-    auto *begin = pair.data();
-    auto *end = pair.data() + pair.size();
-    const auto [ptr, ec] = std::from_chars(begin, end, value, 16);
-    if (ec != std::errc{} || ptr != end || value > 0xff) {
-      throw std::runtime_error("invalid hex byte: " + pair);
-    }
-    bytes.push_back(static_cast<std::uint8_t>(value));
+  if (high_nibble >= 0) {
+    throw std::runtime_error("hex byte string must have even length: " + hex);
   }
   return bytes;
 }
@@ -284,6 +329,44 @@ std::optional<std::uint64_t> ParseMemoryAddressKey(const std::string &raw_key) {
     throw std::runtime_error("memory key has empty address: " + raw_key);
   }
   return ParseUnsigned(address_text, 0);
+}
+
+std::vector<ParsedInstructionHeader>
+X86TesterParser::ParseInstructionHeaders(const std::filesystem::path &path) const {
+  std::ifstream input(path);
+  if (!input) {
+    throw std::runtime_error("failed to open input file: " + path.string());
+  }
+
+  std::vector<ParsedInstructionHeader> headers;
+  std::string line;
+  std::uint64_t line_number = 0;
+  std::uint64_t instruction_id = 0;
+  while (std::getline(input, line)) {
+    ++line_number;
+    if (Trim(line).empty()) {
+      continue;
+    }
+    if (line.rfind("instr:", 0) != 0) {
+      continue;
+    }
+
+    try {
+      const auto header = ParseHeader(line);
+      ParsedInstructionHeader parsed;
+      parsed.instruction_id = ++instruction_id;
+      parsed.address = header.address;
+      parsed.opcode = header.opcode;
+      parsed.instruction = header.instruction;
+      parsed.row_count = header.row_count;
+      headers.push_back(std::move(parsed));
+    } catch (const std::exception &e) {
+      std::ostringstream msg;
+      msg << path << ':' << line_number << ": " << e.what();
+      throw std::runtime_error(msg.str());
+    }
+  }
+  return headers;
 }
 
 ParsedCorpus

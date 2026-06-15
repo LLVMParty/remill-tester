@@ -16,6 +16,14 @@ struct ParsedCorpus {
   std::uint64_t parse_warnings = 0;
 };
 
+struct ParsedInstructionHeader {
+  std::uint64_t instruction_id = 0;
+  std::uint64_t address = 0;
+  std::string opcode;
+  std::string instruction;
+  std::uint64_t row_count = 0;
+};
+
 std::string ToLower(std::string value);
 std::string ToUpper(std::string value);
 std::string Trim(std::string value);
@@ -27,6 +35,8 @@ std::optional<std::uint64_t> ParseMemoryAddressKey(const std::string &key);
 class X86TesterParser {
 public:
   ParsedCorpus ParseFile(const std::filesystem::path &path) const;
+  std::vector<ParsedInstructionHeader>
+  ParseInstructionHeaders(const std::filesystem::path &path) const;
 };
 
 } // namespace remill_tester

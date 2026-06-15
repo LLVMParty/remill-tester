@@ -18,6 +18,7 @@
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/Error.h>
 #include <llvm/Support/TargetSelect.h>
+#include <llvm/Target/TargetMachine.h>
 #include <llvm/TargetParser/Host.h>
 #include <llvm/TargetParser/Triple.h>
 #include <llvm/Transforms/IPO/GlobalDCE.h>
@@ -244,7 +245,16 @@ bool RemillBackend::EnsureInitialized(std::string &error) {
     return false;
   }
 
-  auto jit_or_error = llvm::orc::LLJITBuilder().create();
+  auto target_builder_or_error = llvm::orc::JITTargetMachineBuilder::detectHost();
+  if (!target_builder_or_error) {
+    error = ToString(target_builder_or_error.takeError());
+    return false;
+  }
+  target_builder_or_error->setCodeGenOptLevel(llvm::CodeGenOptLevel::None);
+  auto jit_or_error = llvm::orc::LLJITBuilder()
+                          .setJITTargetMachineBuilder(
+                              std::move(*target_builder_or_error))
+                          .create();
   if (!jit_or_error) {
     error = ToString(jit_or_error.takeError());
     return false;

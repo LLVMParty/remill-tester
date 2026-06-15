@@ -839,7 +839,7 @@ int Run(const Options &options) {
     XedDecoder prepare_decoder;
     std::vector<ExpectationRow> prepare_rows;
     std::set<std::string> prepare_keys;
-    std::set<std::string> prepare_selected_groups;
+    std::uint64_t prepare_selected_groups = 0;
     std::uint64_t prepare_selected_rows = 0;
     bool prepare_stop = false;
 
@@ -847,14 +847,13 @@ int Run(const Options &options) {
       if (prepare_stop) {
         break;
       }
-      const auto corpus = parser.ParseFile(path);
-      for (const auto &row : corpus.rows) {
-        const auto mnemonic = FirstToken(row.instruction);
+      for (const auto &header : parser.ParseInstructionHeaders(path)) {
+        const auto mnemonic = FirstToken(header.instruction);
         if (!options.mnemonics.empty() &&
             options.mnemonics.count(mnemonic) == 0) {
           continue;
         }
-        if (!options.opcodes.empty() && options.opcodes.count(row.opcode) == 0) {
+        if (!options.opcodes.empty() && options.opcodes.count(header.opcode) == 0) {
           continue;
         }
         if (options.limit_states != 0 &&
@@ -862,28 +861,37 @@ int Run(const Options &options) {
           prepare_stop = true;
           break;
         }
-
-        const auto group_key = InstructionGroupKey(path, row);
-        if (prepare_selected_groups.count(group_key) == 0) {
-          if (options.limit_instructions != 0 &&
-              prepare_selected_groups.size() >= options.limit_instructions) {
-            prepare_stop = true;
-            break;
-          }
-          prepare_selected_groups.insert(group_key);
+        if (options.limit_instructions != 0 &&
+            prepare_selected_groups >= options.limit_instructions) {
+          prepare_stop = true;
+          break;
         }
+
+        ExpectationRow row;
+        row.instruction_id = header.instruction_id;
+        row.address = header.address;
+        row.opcode = header.opcode;
+        row.instruction = header.instruction;
+        ++prepare_selected_groups;
+        const auto remaining =
+            options.limit_states == 0
+                ? header.row_count
+                : std::min(header.row_count,
+                           options.limit_states - prepare_selected_rows);
+        prepare_selected_rows += remaining;
 
         const auto metadata =
             prepare_decoder.Decode(row.address, ParseHexBytes(row.opcode));
-        const bool memory_state_missing = metadata.ok &&
-                                          RequiresMemoryOracle(metadata) &&
-                                          row.initial_memory.empty();
-        ++prepare_selected_rows;
-        if (PreExecutionSkip(metadata, row, memory_state_missing)) {
+        if (PreExecutionSkip(metadata, row, false)) {
+          continue;
+        }
+        if (metadata.iclass == "INT" || metadata.iclass == "INT3" ||
+            metadata.iclass == "UD2" || metadata.iclass == "SYSCALL" ||
+            metadata.iclass == "SYSENTER" || metadata.iclass == "SYSEXIT") {
           continue;
         }
         if (prepare_keys.insert(DecodeKey(row)).second) {
-          prepare_rows.push_back(row);
+          prepare_rows.push_back(std::move(row));
         }
       }
     }
