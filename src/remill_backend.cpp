@@ -229,49 +229,53 @@ RemillBackend::Compile(const ExpectationRow &row, std::string &error) {
   if (auto it = cache_.find(key); it != cache_.end()) {
     return it->second.get();
   }
+  if (auto it = failed_compile_cache_.find(key);
+      it != failed_compile_cache_.end()) {
+    error = it->second;
+    return nullptr;
+  }
+  const auto fail = [&](std::string message) -> CompiledInstruction * {
+    error = std::move(message);
+    failed_compile_cache_[key] = error;
+    return nullptr;
+  };
 
   llvm::orc::ThreadSafeContext context(std::make_unique<llvm::LLVMContext>());
   auto *llvm_context = context.withContextDo(
       [](llvm::LLVMContext *ctx) -> llvm::LLVMContext * { return ctx; });
   if (llvm_context == nullptr) {
-    error = "failed to create LLVM context";
-    return nullptr;
+    return fail("failed to create LLVM context");
   }
 
   auto arch = remill::Arch::Get(*llvm_context, "linux", "amd64");
   if (!arch) {
-    error = "failed to create Remill linux/amd64 architecture";
-    return nullptr;
+    return fail("failed to create Remill linux/amd64 architecture");
   }
 
   auto jit_or_error = llvm::orc::LLJITBuilder().create();
   if (!jit_or_error) {
-    error = ToString(jit_or_error.takeError());
-    return nullptr;
+    return fail(ToString(jit_or_error.takeError()));
   }
   auto jit = std::move(*jit_or_error);
   if (!DefineRemillIntrinsicSymbols(*jit, error)) {
-    return nullptr;
+    return fail(error);
   }
 
   auto generator =
       llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
           jit->getDataLayout().getGlobalPrefix());
   if (!generator) {
-    error = ToString(generator.takeError());
-    return nullptr;
+    return fail(ToString(generator.takeError()));
   }
   jit->getMainJITDylib().addGenerator(std::move(*generator));
 
   auto semantics = remill::LoadArchSemantics(arch.get());
   if (!semantics) {
-    error = "failed to load Remill semantics";
-    return nullptr;
+    return fail("failed to load Remill semantics");
   }
   const auto *intrinsics = arch->GetInstrinsicTable();
   if (intrinsics == nullptr) {
-    error = "failed to create Remill intrinsic table";
-    return nullptr;
+    return fail("failed to create Remill intrinsic table");
   }
 
   const auto opcode_bytes = ParseHexBytes(row.opcode);
@@ -282,8 +286,7 @@ RemillBackend::Compile(const ExpectationRow &row, std::string &error) {
   remill::DecodingContext decoding_context = arch->CreateInitialContext();
   if (!arch->DecodeInstruction(row.address, instruction_bytes, instruction,
                                decoding_context)) {
-    error = "Remill failed to decode opcode " + row.opcode;
-    return nullptr;
+    return fail("Remill failed to decode opcode " + row.opcode);
   }
 
   const auto function_name = FunctionName(next_function_id_++, row);
@@ -292,8 +295,7 @@ RemillBackend::Compile(const ExpectationRow &row, std::string &error) {
   auto lifter = instruction.GetLifter();
   const auto status = lifter->LiftIntoBlock(instruction, block);
   if (status != remill::kLiftedInstruction) {
-    error = "Remill failed to lift opcode " + row.opcode;
-    return nullptr;
+    return fail("Remill failed to lift opcode " + row.opcode);
   }
 
   llvm::IRBuilder<> ir(block);
@@ -306,14 +308,12 @@ RemillBackend::Compile(const ExpectationRow &row, std::string &error) {
   auto add_error = jit->addIRModule(
       llvm::orc::ThreadSafeModule(std::move(semantics), context));
   if (add_error) {
-    error = ToString(std::move(add_error));
-    return nullptr;
+    return fail(ToString(std::move(add_error)));
   }
 
   auto symbol = jit->lookup(function_name);
   if (!symbol) {
-    error = ToString(symbol.takeError());
-    return nullptr;
+    return fail(ToString(symbol.takeError()));
   }
 
   auto compiled = std::make_unique<CompiledInstruction>();

@@ -36,6 +36,7 @@ private:
   bool initialized_ = false;
   std::uint64_t next_function_id_ = 0;
   std::map<std::string, std::unique_ptr<CompiledInstruction>> cache_;
+  std::map<std::string, std::string> failed_compile_cache_;
 };
 
 } // namespace remill_tester
