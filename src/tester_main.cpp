@@ -430,6 +430,57 @@ std::string UnsupportedDetail(const ExecutionResult &execution_result) {
   return {};
 }
 
+struct SkipInfo {
+  std::string reason;
+  std::string detail;
+};
+
+std::optional<SkipInfo> PreExecutionSkip(const XedMetadata &metadata,
+                                         const ExpectationRow &row,
+                                         bool memory_state_missing) {
+  if (!metadata.ok) {
+    return SkipInfo{"xed_decode_failed", {}};
+  }
+  if (metadata.length != ParseHexBytes(row.opcode).size()) {
+    return SkipInfo{"xed_length_mismatch", {}};
+  }
+  if (memory_state_missing) {
+    return SkipInfo{"memory_state_missing", {}};
+  }
+  if (IsFpuUnsupported(metadata, row)) {
+    return SkipInfo{"fpu_state_unsupported", {}};
+  }
+  if (UsesMmxState(row)) {
+    return SkipInfo{"mmx_state_unsupported", {}};
+  }
+  if (IsPrivilegedOrIoUnsupported(metadata)) {
+    return SkipInfo{"privileged_or_io_unsupported", {}};
+  }
+  if (IsEnvironmentReadUnsupported(metadata)) {
+    return SkipInfo{"environment_read_unsupported", {}};
+  }
+  if (IsDescriptorStateUnsupported(metadata, row)) {
+    return SkipInfo{"descriptor_state_unsupported", {}};
+  }
+  if (IsExpectedExceptionUnsupported(metadata, row)) {
+    return SkipInfo{"expected_exception_unsupported",
+                    row.expected_exception_kind.value_or("")};
+  }
+  if (IsAtomic128Unsupported(metadata)) {
+    return SkipInfo{"atomic128_unsupported", {}};
+  }
+  if (IsPopfqUnsupported(metadata)) {
+    return SkipInfo{"popfq_flag_state_unsupported", {}};
+  }
+  if (IsApproximateFpUnsupported(metadata)) {
+    return SkipInfo{"approximate_fp_unsupported", {}};
+  }
+  if (IsShaUnsupported(metadata)) {
+    return SkipInfo{"sha_extension_unsupported", {}};
+  }
+  return std::nullopt;
+}
+
 void WriteSkipJson(std::ostream *out, const std::filesystem::path &path,
                    const ExpectationRow &row, const std::string &reason,
                    const std::string &detail = {}) {
@@ -784,6 +835,71 @@ int Run(const Options &options) {
   std::set<std::string> printed_decodes;
   bool stop = false;
 
+  if (options.execute) {
+    XedDecoder prepare_decoder;
+    std::vector<ExpectationRow> prepare_rows;
+    std::set<std::string> prepare_keys;
+    std::set<std::string> prepare_selected_groups;
+    std::uint64_t prepare_selected_rows = 0;
+    bool prepare_stop = false;
+
+    for (const auto &path : options.inputs) {
+      if (prepare_stop) {
+        break;
+      }
+      const auto corpus = parser.ParseFile(path);
+      for (const auto &row : corpus.rows) {
+        const auto mnemonic = FirstToken(row.instruction);
+        if (!options.mnemonics.empty() &&
+            options.mnemonics.count(mnemonic) == 0) {
+          continue;
+        }
+        if (!options.opcodes.empty() && options.opcodes.count(row.opcode) == 0) {
+          continue;
+        }
+        if (options.limit_states != 0 &&
+            prepare_selected_rows >= options.limit_states) {
+          prepare_stop = true;
+          break;
+        }
+
+        const auto group_key = InstructionGroupKey(path, row);
+        if (prepare_selected_groups.count(group_key) == 0) {
+          if (options.limit_instructions != 0 &&
+              prepare_selected_groups.size() >= options.limit_instructions) {
+            prepare_stop = true;
+            break;
+          }
+          prepare_selected_groups.insert(group_key);
+        }
+
+        const auto metadata =
+            prepare_decoder.Decode(row.address, ParseHexBytes(row.opcode));
+        const bool memory_state_missing = metadata.ok &&
+                                          RequiresMemoryOracle(metadata) &&
+                                          row.initial_memory.empty();
+        ++prepare_selected_rows;
+        if (PreExecutionSkip(metadata, row, memory_state_missing)) {
+          continue;
+        }
+        if (prepare_keys.insert(DecodeKey(row)).second) {
+          prepare_rows.push_back(row);
+        }
+      }
+    }
+
+    std::vector<const ExpectationRow *> prepare_row_ptrs;
+    prepare_row_ptrs.reserve(prepare_rows.size());
+    for (const auto &row : prepare_rows) {
+      prepare_row_ptrs.push_back(&row);
+    }
+    std::string prepare_error;
+    if (!remill_backend.PrepareCases(prepare_row_ptrs, prepare_error)) {
+      throw std::runtime_error("failed to prepare Remill batch: " +
+                               prepare_error);
+    }
+  }
+
   for (const auto &path : options.inputs) {
     if (stop) {
       break;
@@ -855,83 +971,10 @@ int Run(const Options &options) {
       }
 
       if (options.execute) {
-        if (!metadata.ok) {
-          const std::string reason = "xed_decode_failed";
-          RecordSkip(summary, reason);
-          WriteSkipJson(skip_report, path, row, reason);
-          continue;
-        }
-        if (metadata.length != ParseHexBytes(row.opcode).size()) {
-          const std::string reason = "xed_length_mismatch";
-          RecordSkip(summary, reason);
-          WriteSkipJson(skip_report, path, row, reason);
-          continue;
-        }
-        if (memory_state_missing) {
-          const std::string reason = "memory_state_missing";
-          RecordSkip(summary, reason);
-          WriteSkipJson(skip_report, path, row, reason);
-          continue;
-        }
-        if (IsFpuUnsupported(metadata, row)) {
-          const std::string reason = "fpu_state_unsupported";
-          RecordSkip(summary, reason);
-          WriteSkipJson(skip_report, path, row, reason);
-          continue;
-        }
-        if (UsesMmxState(row)) {
-          const std::string reason = "mmx_state_unsupported";
-          RecordSkip(summary, reason);
-          WriteSkipJson(skip_report, path, row, reason);
-          continue;
-        }
-        if (IsPrivilegedOrIoUnsupported(metadata)) {
-          const std::string reason = "privileged_or_io_unsupported";
-          RecordSkip(summary, reason);
-          WriteSkipJson(skip_report, path, row, reason);
-          continue;
-        }
-        if (IsEnvironmentReadUnsupported(metadata)) {
-          const std::string reason = "environment_read_unsupported";
-          RecordSkip(summary, reason);
-          WriteSkipJson(skip_report, path, row, reason);
-          continue;
-        }
-        if (IsDescriptorStateUnsupported(metadata, row)) {
-          const std::string reason = "descriptor_state_unsupported";
-          RecordSkip(summary, reason);
-          WriteSkipJson(skip_report, path, row, reason);
-          continue;
-        }
-        if (IsExpectedExceptionUnsupported(metadata, row)) {
-          const std::string reason = "expected_exception_unsupported";
-          RecordSkip(summary, reason);
-          WriteSkipJson(skip_report, path, row, reason,
-                        *row.expected_exception_kind);
-          continue;
-        }
-        if (IsAtomic128Unsupported(metadata)) {
-          const std::string reason = "atomic128_unsupported";
-          RecordSkip(summary, reason);
-          WriteSkipJson(skip_report, path, row, reason);
-          continue;
-        }
-        if (IsPopfqUnsupported(metadata)) {
-          const std::string reason = "popfq_flag_state_unsupported";
-          RecordSkip(summary, reason);
-          WriteSkipJson(skip_report, path, row, reason);
-          continue;
-        }
-        if (IsApproximateFpUnsupported(metadata)) {
-          const std::string reason = "approximate_fp_unsupported";
-          RecordSkip(summary, reason);
-          WriteSkipJson(skip_report, path, row, reason);
-          continue;
-        }
-        if (IsShaUnsupported(metadata)) {
-          const std::string reason = "sha_extension_unsupported";
-          RecordSkip(summary, reason);
-          WriteSkipJson(skip_report, path, row, reason);
+        if (const auto skip =
+                PreExecutionSkip(metadata, row, memory_state_missing)) {
+          RecordSkip(summary, skip->reason);
+          WriteSkipJson(skip_report, path, row, skip->reason, skip->detail);
           continue;
         }
 
