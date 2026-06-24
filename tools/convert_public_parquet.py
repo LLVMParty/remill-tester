@@ -27,7 +27,7 @@ from typing import Iterable
 import duckdb
 
 
-DEFAULT_BASE_URL = "https://binit.rennes.centralesupelec.fr"
+DEFAULT_BASE_URL = "https://binit.wazab.in"
 FILES = ("instructions.parquet", "test_cases.parquet", "test_results.parquet")
 ENTRY_ADDR = 0x666666660000
 PAGE_SIZE = 0x1000
