@@ -64,6 +64,17 @@ bool IsUnsupportedCompileError(const std::string &error) {
          error.rfind("Remill failed to lift", 0) == 0;
 }
 
+void ExternalizeSyncHyperCall(llvm::Module &module) {
+  auto *function = module.getFunction("__remill_sync_hyper_call");
+  if (function == nullptr) {
+    return;
+  }
+  if (!function->isDeclaration()) {
+    function->deleteBody();
+  }
+  function->setLinkage(llvm::GlobalValue::ExternalLinkage);
+}
+
 void PruneModuleForJit(llvm::Module &module,
                        const std::set<llvm::Function *> &entry_functions) {
   for (auto &function : module.functions()) {
@@ -304,6 +315,7 @@ bool RemillBackend::EnsurePendingModule(std::string &error) {
   }
   pending_module_->setDataLayout(jit_->getDataLayout());
   pending_module_->setTargetTriple(llvm::Triple(llvm::sys::getProcessTriple()));
+  ExternalizeSyncHyperCall(*pending_module_);
   pending_intrinsics_ =
       std::make_unique<remill::IntrinsicTable>(pending_module_.get());
   return true;

@@ -147,6 +147,8 @@ Memory *__remill_function_return(State *state, std::uint64_t address,
 Memory *__remill_jump(State *state, std::uint64_t address, Memory *memory);
 Memory *__remill_async_hyper_call(State *state, std::uint64_t address,
                                   Memory *memory);
+Memory *__remill_sync_hyper_call(State *state, Memory *memory,
+                                 std::uint32_t call);
 
 std::uint8_t __remill_read_io_port_8(Memory *memory, std::uint64_t address);
 std::uint16_t __remill_read_io_port_16(Memory *memory, std::uint64_t address);

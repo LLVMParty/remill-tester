@@ -2,6 +2,9 @@
 
 #include "guest_memory.hpp"
 
+#include <remill/Arch/Runtime/HyperCall.h>
+#include <remill/Arch/X86/Runtime/State.h>
+
 #include <cstdint>
 #include <mutex>
 #include <string>
@@ -153,6 +156,7 @@ void RegisterRemillIntrinsicSymbols() {
     REMILL_TESTER_ADD_SYMBOL(__remill_function_return)
     REMILL_TESTER_ADD_SYMBOL(__remill_jump)
     REMILL_TESTER_ADD_SYMBOL(__remill_async_hyper_call)
+    REMILL_TESTER_ADD_SYMBOL(__remill_sync_hyper_call)
     REMILL_TESTER_ADD_SYMBOL(__remill_read_io_port_8)
     REMILL_TESTER_ADD_SYMBOL(__remill_read_io_port_16)
     REMILL_TESTER_ADD_SYMBOL(__remill_read_io_port_32)
@@ -244,6 +248,7 @@ bool DefineRemillIntrinsicSymbols(llvm::orc::LLJIT &jit, std::string &error) {
   REMILL_TESTER_ADD_SYMBOL(__remill_function_return)
   REMILL_TESTER_ADD_SYMBOL(__remill_jump)
   REMILL_TESTER_ADD_SYMBOL(__remill_async_hyper_call)
+  REMILL_TESTER_ADD_SYMBOL(__remill_sync_hyper_call)
   REMILL_TESTER_ADD_SYMBOL(__remill_read_io_port_8)
   REMILL_TESTER_ADD_SYMBOL(__remill_read_io_port_16)
   REMILL_TESTER_ADD_SYMBOL(__remill_read_io_port_32)
@@ -421,6 +426,32 @@ Memory *__remill_async_hyper_call(State *, std::uint64_t address,
                                   Memory *memory) {
   MarkUnsupported(memory, address, "__remill_async_hyper_call");
   return memory;
+}
+
+Memory *__remill_sync_hyper_call(State *state, Memory *memory,
+                                 std::uint32_t call) {
+  if (state == nullptr) {
+    MarkUnsupported(memory, 0, "__remill_sync_hyper_call");
+    return memory;
+  }
+
+  const auto selector = static_cast<std::uint16_t>(state->addr_to_load);
+  bool zf = false;
+  switch (static_cast<SyncHyperCall::Name>(call)) {
+  case SyncHyperCall::kX86VerifySegmentReadable:
+    zf = selector == 0x20u;
+    state->rflag.zf = zf;
+    state->aflag.zf = zf;
+    return memory;
+  case SyncHyperCall::kX86VerifySegmentWritable:
+    zf = selector == 0x28u;
+    state->rflag.zf = zf;
+    state->aflag.zf = zf;
+    return memory;
+  default:
+    MarkUnsupported(memory, selector, "__remill_sync_hyper_call");
+    return memory;
+  }
 }
 
 std::uint8_t __remill_read_io_port_8(Memory *memory, std::uint64_t address) {
