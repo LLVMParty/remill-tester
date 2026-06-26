@@ -6,10 +6,14 @@
 # ///
 """Convert the public binit parquet corpus to remill-tester text files.
 
-The emitted format is the currently-supported x86Tester-style text format:
+The emitted format is the current x86Tester-style pooled text format:
 
-    instr:<address>;#<opcode_hex>;<disassembly>;<row_count>
-     in:<state>|out:<state>[|exception:<kind>]
+    data:<N>
+    #<hex 0>
+    #<hex 1>
+    ...
+    instr:<address>;#<opcode_hex>;<disassembly>;<row_count>;in=<schema>;out=<schema>
+    <input-indexes>|<output-indexes-or-!exception>
 
 The public parquet corpus is already normalized to sparse integer state. Its
 synthetic memory cell, ``mem0_value``, is converted into remill-tester's explicit
@@ -131,17 +135,23 @@ def uint64_le_hex(value: int) -> str:
 
 def normalize_state_key(key: str) -> str:
     lowered = key.strip().lower()
-    if lowered in {"flags", "eflags", "rflags"}:
-        return "flag"
+    if lowered in {"flag", "flags", "eflags", "rflags"}:
+        return "flags"
     return lowered
 
 
-def format_state_items(
+def state_value_hex(key: str, value: int) -> str:
+    if key == "flags":
+        return int_le_hex(value, 4)
+    return uint64_le_hex(value)
+
+
+def state_items(
     state_json: str | None,
     *,
     mem0_addr: int,
     extra_memory: list[tuple[int, bytes]] | None = None,
-) -> str:
+) -> list[tuple[str, str]]:
     if not state_json:
         state = {}
     else:
@@ -149,17 +159,17 @@ def format_state_items(
         if not isinstance(state, dict):
             raise ConversionError(f"state JSON is not an object: {state_json!r}")
 
-    parts: list[str] = []
+    parts: list[tuple[str, str]] = []
     for raw_key, raw_value in state.items():
         value = int(raw_value)
         key = normalize_state_key(raw_key)
         if key == "mem0_value":
-            parts.append(f"mem[0x{mem0_addr:X}]:#{uint64_le_hex(value)}")
+            parts.append((f"mem[0x{mem0_addr:X}]", uint64_le_hex(value)))
         else:
-            parts.append(f"{key}:#{uint64_le_hex(value)}")
+            parts.append((key, state_value_hex(key, value)))
     for address, data in extra_memory or []:
-        parts.append(f"mem[0x{address:X}]:#{data.hex().upper()}")
-    return ",".join(parts)
+        parts.append((f"mem[0x{address:X}]", data.hex().upper()))
+    return parts
 
 
 def instruction_address(opcode: str, *, entry_addr: int, page_size: int) -> int:
@@ -246,6 +256,41 @@ def public_bit_test_hidden_memory(
     return [(element_addr, bytes.fromhex(int_le_hex(value, element_size)))]
 
 
+class OutputFile:
+    def __init__(self, path: Path):
+        self.path = path
+        self.data_pool: list[str] = []
+        self.data_index: dict[str, int] = {}
+        self.body: list[str] = []
+
+    def intern(self, hex_value: str) -> int:
+        clean = "".join(str(hex_value).split()).upper()
+        if len(clean) % 2:
+            raise ConversionError(f"pooled value has odd hex length: {hex_value!r}")
+        try:
+            bytes.fromhex(clean)
+        except ValueError as exc:
+            raise ConversionError(f"invalid pooled hex value {hex_value!r}: {exc}") from exc
+        existing = self.data_index.get(clean)
+        if existing is not None:
+            return existing
+        index = len(self.data_pool)
+        self.data_index[clean] = index
+        self.data_pool.append(clean)
+        return index
+
+    def write(self, text: str) -> None:
+        self.body.append(text)
+
+    def flush(self) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("w", encoding="utf-8", newline="\n") as handle:
+            handle.write(f"data:{len(self.data_pool)}\n")
+            for hex_value in self.data_pool:
+                handle.write(f"#{hex_value}\n")
+            handle.writelines(self.body)
+
+
 class OutputManager:
     def __init__(self, output: Path | None, output_dir: Path | None, *, overwrite: bool):
         if (output is None) == (output_dir is None):
@@ -253,8 +298,8 @@ class OutputManager:
         self.output = output
         self.output_dir = output_dir
         self.overwrite = overwrite
-        self._single_handle = None
-        self._handles: dict[str, object] = {}
+        self._single_file: OutputFile | None = None
+        self._files: dict[str, OutputFile] = {}
         self._paths: list[Path] = []
 
     @property
@@ -265,8 +310,7 @@ class OutputManager:
         if self.output is not None:
             if self.output.exists() and not self.overwrite:
                 raise ConversionError(f"output already exists: {self.output}")
-            self.output.parent.mkdir(parents=True, exist_ok=True)
-            self._single_handle = self.output.open("w", encoding="utf-8", newline="\n")
+            self._single_file = OutputFile(self.output)
             self._paths.append(self.output)
         else:
             assert self.output_dir is not None
@@ -281,23 +325,25 @@ class OutputManager:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:
-        if self._single_handle is not None:
-            self._single_handle.close()
-        for handle in self._handles.values():
-            handle.close()
+        if exc_type is not None:
+            return
+        if self._single_file is not None:
+            self._single_file.flush()
+        for output_file in self._files.values():
+            output_file.flush()
 
-    def handle_for(self, instruction_name: str):
-        if self._single_handle is not None:
-            return self._single_handle
+    def handle_for(self, instruction_name: str) -> OutputFile:
+        if self._single_file is not None:
+            return self._single_file
         safe_name = instruction_name.lower().replace("/", "_")
-        handle = self._handles.get(safe_name)
-        if handle is None:
+        output_file = self._files.get(safe_name)
+        if output_file is None:
             assert self.output_dir is not None
             path = self.output_dir / f"{safe_name}.txt"
-            handle = path.open("w", encoding="utf-8", newline="\n")
-            self._handles[safe_name] = handle
+            output_file = OutputFile(path)
+            self._files[safe_name] = output_file
             self._paths.append(path)
-        return handle
+        return output_file
 
 
 def build_query(*, mnemonics: list[str], limit_test_cases: int | None) -> tuple[str, list[object]]:
@@ -343,6 +389,46 @@ def build_query(*, mnemonics: list[str], limit_test_cases: int | None) -> tuple[
     return query, params
 
 
+def append_schema(schema: list[str], seen: set[str], items: list[tuple[str, str]]) -> None:
+    for key, _value in items:
+        if key not in seen:
+            seen.add(key)
+            schema.append(key)
+
+
+def items_to_map(items: list[tuple[str, str]], *, context: str) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for key, value in items:
+        if key in result:
+            raise ConversionError(f"duplicate key {key!r} in {context}")
+        result[key] = value
+    return result
+
+
+def is_memory_key(key: str) -> bool:
+    lowered = key.lower()
+    return (lowered.startswith("mem[") and lowered.endswith("]")) or lowered.startswith("mem@")
+
+
+def schema_indices(
+    output_file: OutputFile,
+    values: dict[str, str],
+    schema: list[str],
+    *,
+    context: str,
+    defaults: dict[str, str] | None = None,
+) -> str:
+    indices: list[str] = []
+    for key in schema:
+        value = values.get(key)
+        if value is None and defaults is not None:
+            value = defaults.get(key)
+        if value is None:
+            raise ConversionError(f"missing key {key!r} in {context}")
+        indices.append(str(output_file.intern(value)))
+    return ",".join(indices)
+
+
 def write_group(
     outputs: OutputManager,
     group: list[tuple],
@@ -355,7 +441,7 @@ def write_group(
         return 0
 
     (
-        _test_case_id,
+        test_case_id,
         instruction,
         opcode,
         _instruction_id,
@@ -368,13 +454,20 @@ def write_group(
     ) = group[0]
     opcode = str(opcode).upper()
     address = instruction_address(opcode, entry_addr=entry_addr, page_size=page_size)
-    handle = outputs.handle_for(str(instruction_name))
-    handle.write(f"instr:0x{address:X};#{opcode};{instruction};{len(group)}\n")
+    output_file = outputs.handle_for(str(instruction_name))
 
-    for row in group:
+    in_schema: list[str] = []
+    out_schema: list[str] = []
+    in_seen: set[str] = set()
+    out_seen: set[str] = set()
+    input_defaults: dict[str, str] = {}
+    converted_rows: list[tuple[dict[str, str], dict[str, str], str | None]] = []
+
+    for row_index, row in enumerate(group):
         initial_state = row[7]
         final_state = row[8]
         exception_kind = row[9]
+        exception_text = str(exception_kind) if exception_kind is not None else None
         extra_initial_memory = public_bit_test_hidden_memory(
             str(instruction_name),
             str(instruction),
@@ -382,17 +475,56 @@ def write_group(
             final_state,
             mem0_addr=mem0_addr,
         )
-        in_text = format_state_items(
+        input_items = state_items(
             initial_state,
             mem0_addr=mem0_addr,
             extra_memory=extra_initial_memory,
         )
-        out_text = format_state_items(final_state, mem0_addr=mem0_addr)
-        handle.write(f" in:{in_text}|out:{out_text}")
-        if exception_kind:
-            handle.write(f"|exception:{exception_kind}")
-        handle.write("\n")
-    return len(group)
+        output_items = [] if exception_text else state_items(final_state, mem0_addr=mem0_addr)
+        append_schema(in_schema, in_seen, input_items)
+        for key, value in input_items:
+            if is_memory_key(key) and key not in input_defaults:
+                input_defaults[key] = "00" * (len(value) // 2)
+        if not exception_text:
+            append_schema(out_schema, out_seen, output_items)
+        converted_rows.append(
+            (
+                items_to_map(
+                    input_items,
+                    context=f"test_case {test_case_id} row {row_index} input",
+                ),
+                items_to_map(
+                    output_items,
+                    context=f"test_case {test_case_id} row {row_index} output",
+                ),
+                exception_text,
+            )
+        )
+
+    output_file.write(
+        f"instr:0x{address:X};#{opcode};{instruction};{len(converted_rows)};"
+        f"in={','.join(in_schema)};out={','.join(out_schema)}\n"
+    )
+
+    for row_index, (input_values, output_values, exception_text) in enumerate(converted_rows):
+        input_text = schema_indices(
+            output_file,
+            input_values,
+            in_schema,
+            context=f"test_case {test_case_id} row {row_index} input",
+            defaults=input_defaults,
+        )
+        if exception_text:
+            output_text = f"!{exception_text}"
+        else:
+            output_text = schema_indices(
+                output_file,
+                output_values,
+                out_schema,
+                context=f"test_case {test_case_id} row {row_index} output",
+            )
+        output_file.write(f"{input_text}|{output_text}\n")
+    return len(converted_rows)
 
 
 def convert(
@@ -547,14 +679,15 @@ def main(argv: Iterable[str] = sys.argv[1:]) -> int:
                 page_size=args.page_size,
                 mem0_addr=args.mem0_addr,
             )
-            print(
-                f"converted test_cases={cases} states={states} files={len(outputs.paths)}",
-                file=sys.stderr,
-            )
-            for path in outputs.paths[:10]:
-                print(f"wrote {path}", file=sys.stderr)
-            if len(outputs.paths) > 10:
-                print(f"... {len(outputs.paths) - 10} more files", file=sys.stderr)
+            output_paths = list(outputs.paths)
+        print(
+            f"converted test_cases={cases} states={states} files={len(output_paths)}",
+            file=sys.stderr,
+        )
+        for path in output_paths[:10]:
+            print(f"wrote {path}", file=sys.stderr)
+        if len(output_paths) > 10:
+            print(f"... {len(output_paths) - 10} more files", file=sys.stderr)
     except ConversionError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

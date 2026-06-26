@@ -2,8 +2,8 @@
 
 #include <algorithm>
 #include <cctype>
-#include <charconv>
 #include <fstream>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
@@ -16,6 +16,8 @@ struct InstructionHeader {
   std::string opcode;
   std::string instruction;
   std::uint64_t row_count = 0;
+  std::vector<std::string> input_schema;
+  std::vector<std::string> output_schema;
 };
 
 std::vector<std::string> Split(const std::string &text, char delimiter) {
@@ -42,6 +44,32 @@ std::uint64_t ParseUnsigned(const std::string &text, int base = 0) {
   return value;
 }
 
+std::vector<std::string> ParseSchemaField(const std::string &field,
+                                          const std::string &name) {
+  const auto trimmed = Trim(field);
+  const auto prefix = name + "=";
+  if (trimmed.rfind(prefix, 0) != 0) {
+    throw std::runtime_error("instruction header field must start with " +
+                             prefix + ": " + field);
+  }
+
+  const auto body = Trim(trimmed.substr(prefix.size()));
+  std::vector<std::string> schema;
+  if (body.empty()) {
+    return schema;
+  }
+
+  for (const auto &part : Split(body, ',')) {
+    auto key = Trim(part);
+    if (key.empty()) {
+      throw std::runtime_error("empty state name in " + name + " schema: " +
+                               field);
+    }
+    schema.push_back(std::move(key));
+  }
+  return schema;
+}
+
 InstructionHeader ParseHeader(const std::string &line) {
   constexpr const char *prefix = "instr:";
   if (line.rfind(prefix, 0) != 0) {
@@ -50,13 +78,9 @@ InstructionHeader ParseHeader(const std::string &line) {
 
   const auto body = line.substr(std::char_traits<char>::length(prefix));
   const auto parts = Split(body, ';');
-  if (parts.size() != 4) {
-    throw std::runtime_error("instruction header must have four fields: " +
-                             line);
-  }
-  if (parts[1].empty() || parts[1][0] != '#') {
+  if (parts.size() != 6) {
     throw std::runtime_error(
-        "instruction header opcode field must start with #: " + line);
+        "instruction header must have six fields: " + line);
   }
 
   InstructionHeader header;
@@ -70,13 +94,33 @@ InstructionHeader ParseHeader(const std::string &line) {
   (void)ParseHexBytes(header.opcode);
   header.instruction = Trim(parts[2]);
   header.row_count = ParseUnsigned(Trim(parts[3]), 10);
+  header.input_schema = ParseSchemaField(parts[4], "in");
+  header.output_schema = ParseSchemaField(parts[5], "out");
   return header;
+}
+
+std::uint64_t ParseDataHeader(const std::string &line) {
+  constexpr const char *prefix = "data:";
+  if (line.rfind(prefix, 0) != 0) {
+    throw std::runtime_error("file must start with data:<count>");
+  }
+  return ParseUnsigned(Trim(line.substr(std::char_traits<char>::length(prefix))),
+                       10);
+}
+
+std::vector<std::uint8_t> ParseDataPoolValue(const std::string &line) {
+  const auto trimmed = Trim(line);
+  if (trimmed.empty() || trimmed[0] != '#') {
+    throw std::runtime_error("data pool value must start with #: " + line);
+  }
+  return ParseHexBytes(trimmed.substr(1));
 }
 
 bool IsByteStateKey(const std::string &key) {
   const auto has_numeric_suffix = [&](const char *prefix) {
     const auto prefix_size = std::char_traits<char>::length(prefix);
-    return key.size() > prefix_size && key.compare(0, prefix_size, prefix) == 0 &&
+    return key.size() > prefix_size &&
+           key.compare(0, prefix_size, prefix) == 0 &&
            std::isdigit(static_cast<unsigned char>(key[prefix_size]));
   };
   return has_numeric_suffix("xmm") || has_numeric_suffix("ymm") ||
@@ -84,17 +128,16 @@ bool IsByteStateKey(const std::string &key) {
          has_numeric_suffix("st");
 }
 
-void AddStateValue(
-    const std::string &raw_key, const std::string &raw_hex,
+void AddStateBytes(
+    const std::string &raw_key, const std::vector<std::uint8_t> &bytes,
     std::map<std::string, std::uint64_t> &scalars,
     std::map<std::string, std::vector<std::uint8_t>> &bytes_map) {
   auto key = CanonicalStateKey(raw_key);
-  auto bytes = ParseHexBytes(raw_hex);
   if (!bytes.empty() && bytes.size() <= 8) {
     scalars[key] = ReadLittleEndianScalar(bytes);
   }
   if (IsByteStateKey(key) || bytes.size() > 8) {
-    bytes_map[key] = std::move(bytes);
+    bytes_map[key] = bytes;
   }
 }
 
@@ -115,64 +158,103 @@ void AddMemoryOutput(std::vector<MemoryExpectation> &memory,
   memory.push_back(std::move(expectation));
 }
 
-void ParseStateMap(const std::string &text,
-                   std::map<std::string, std::uint64_t> &scalars,
-                   std::map<std::string, std::vector<std::uint8_t>> &bytes_map,
-                   std::vector<MemoryCell> *input_memory = nullptr,
-                   std::vector<MemoryExpectation> *output_memory = nullptr) {
-  const auto trimmed = Trim(text);
-  if (trimmed.empty()) {
+void AddPooledValue(
+    const std::string &raw_key, const std::vector<std::uint8_t> &bytes,
+    std::map<std::string, std::uint64_t> &scalars,
+    std::map<std::string, std::vector<std::uint8_t>> &bytes_map,
+    std::vector<MemoryCell> *input_memory = nullptr,
+    std::vector<MemoryExpectation> *output_memory = nullptr) {
+  if (const auto memory_address = ParseMemoryAddressKey(raw_key)) {
+    auto memory_bytes = std::vector<std::uint8_t>(bytes.begin(), bytes.end());
+    if (input_memory != nullptr) {
+      AddMemoryInput(*input_memory, *memory_address, std::move(memory_bytes));
+    } else if (output_memory != nullptr) {
+      AddMemoryOutput(*output_memory, *memory_address, std::move(memory_bytes));
+    } else {
+      throw std::runtime_error("memory key is not valid here: " + raw_key);
+    }
     return;
   }
 
-  std::size_t start = 0;
-  while (start <= trimmed.size()) {
-    const auto pos = trimmed.find(',', start);
-    const auto entry = Trim(trimmed.substr(
-        start, pos == std::string::npos ? std::string::npos : pos - start));
-    if (!entry.empty()) {
-      const auto sep = entry.find(":#");
-      if (sep == std::string::npos) {
-        throw std::runtime_error("state entry must be key:#hex: " + entry);
-      }
-      const auto key = entry.substr(0, sep);
-      const auto hex = entry.substr(sep + 2);
-      if (const auto memory_address = ParseMemoryAddressKey(key)) {
-        auto bytes = ParseHexBytes(hex);
-        if (input_memory != nullptr) {
-          AddMemoryInput(*input_memory, *memory_address, std::move(bytes));
-        } else if (output_memory != nullptr) {
-          AddMemoryOutput(*output_memory, *memory_address, std::move(bytes));
-        } else {
-          throw std::runtime_error(
-              "memory key is not valid in this state map: " + key);
-        }
-      } else {
-        AddStateValue(key, hex, scalars, bytes_map);
-      }
+  AddStateBytes(raw_key, bytes, scalars, bytes_map);
+}
+
+std::vector<std::size_t>
+ParseIndexList(const std::string &text, std::size_t expected_count,
+               std::size_t data_pool_size, const std::string &kind) {
+  const auto trimmed = Trim(text);
+  if (expected_count == 0) {
+    if (!trimmed.empty()) {
+      throw std::runtime_error(kind +
+                               " row has values but schema is empty: " + text);
     }
-    if (pos == std::string::npos) {
-      break;
+    return {};
+  }
+  if (trimmed.empty()) {
+    throw std::runtime_error(kind + " row is empty but schema is not");
+  }
+
+  const auto parts = Split(trimmed, ',');
+  if (parts.size() != expected_count) {
+    std::ostringstream msg;
+    msg << kind << " row has " << parts.size() << " values but schema has "
+        << expected_count << ": " << text;
+    throw std::runtime_error(msg.str());
+  }
+
+  std::vector<std::size_t> indices;
+  indices.reserve(parts.size());
+  for (const auto &part : parts) {
+    const auto index_text = Trim(part);
+    if (index_text.empty()) {
+      throw std::runtime_error("empty " + kind + " data pool index: " + text);
     }
-    start = pos + 1;
+    const auto raw_index = ParseUnsigned(index_text, 10);
+    if (raw_index >= data_pool_size) {
+      std::ostringstream msg;
+      msg << kind << " data pool index " << raw_index
+          << " is out of range for pool size " << data_pool_size;
+      throw std::runtime_error(msg.str());
+    }
+    if (raw_index > static_cast<std::uint64_t>(
+                        std::numeric_limits<std::size_t>::max())) {
+      throw std::runtime_error(kind + " data pool index is too large: " +
+                               index_text);
+    }
+    indices.push_back(static_cast<std::size_t>(raw_index));
+  }
+  return indices;
+}
+
+void ApplySchemaValues(
+    const std::vector<std::string> &schema,
+    const std::vector<std::size_t> &indices,
+    const std::vector<std::vector<std::uint8_t>> &data_pool,
+    std::map<std::string, std::uint64_t> &scalars,
+    std::map<std::string, std::vector<std::uint8_t>> &bytes_map,
+    std::vector<MemoryCell> *input_memory = nullptr,
+    std::vector<MemoryExpectation> *output_memory = nullptr) {
+  if (schema.size() != indices.size()) {
+    throw std::runtime_error("schema/value count mismatch");
+  }
+  for (std::size_t i = 0; i < schema.size(); ++i) {
+    AddPooledValue(schema[i], data_pool[indices[i]], scalars, bytes_map,
+                   input_memory, output_memory);
   }
 }
 
-ExpectationRow ParseStateRow(const std::string &line,
-                             const InstructionHeader &header,
-                             std::uint64_t instruction_id,
-                             std::uint64_t test_case_id,
-                             std::uint64_t state_index) {
-  auto trimmed = Trim(line);
-  if (trimmed.rfind("in:", 0) == 0) {
-    const auto out_pos = trimmed.find("out:", 3);
-    if (out_pos != std::string::npos &&
-        (out_pos == 0 || trimmed[out_pos - 1] != '|')) {
-      trimmed.insert(out_pos, "|");
-    }
+ExpectationRow
+ParseStateRow(const std::string &line, const InstructionHeader &header,
+              std::uint64_t instruction_id, std::uint64_t test_case_id,
+              std::uint64_t state_index,
+              const std::vector<std::vector<std::uint8_t>> &data_pool) {
+  const auto trimmed = Trim(line);
+  const auto separator = trimmed.find('|');
+  if (separator == std::string::npos) {
+    throw std::runtime_error("state row must contain |: " + line);
   }
-  if (trimmed.rfind("in:", 0) != 0) {
-    throw std::runtime_error("state row must start with in:: " + line);
+  if (trimmed.find('|', separator + 1) != std::string::npos) {
+    throw std::runtime_error("state row must contain exactly one |: " + line);
   }
 
   ExpectationRow row;
@@ -186,43 +268,34 @@ ExpectationRow ParseStateRow(const std::string &line,
   row.selected_states = header.row_count;
   row.selected_state_index = state_index;
 
+  const auto input_indices = ParseIndexList(
+      trimmed.substr(0, separator), header.input_schema.size(),
+      data_pool.size(), "input");
+  ApplySchemaValues(header.input_schema, input_indices, data_pool,
+                    row.initial_state, row.initial_bytes,
+                    &row.initial_memory, nullptr);
+
   std::map<std::string, std::uint64_t> expected_scalars;
   std::map<std::string, std::vector<std::uint8_t>> expected_bytes;
 
-  std::size_t segment_start = 0;
-  while (segment_start <= trimmed.size()) {
-    const auto segment_pos = trimmed.find('|', segment_start);
-    const auto segment = Trim(trimmed.substr(
-        segment_start, segment_pos == std::string::npos
-                           ? std::string::npos
-                           : segment_pos - segment_start));
-    if (segment.rfind("in:", 0) == 0) {
-      ParseStateMap(segment.substr(3), row.initial_state, row.initial_bytes,
-                    &row.initial_memory, nullptr);
-    } else if (segment.rfind("out:", 0) == 0) {
-      ParseStateMap(segment.substr(4), expected_scalars, expected_bytes,
-                    nullptr, &row.expected_memory);
-      row.expected_final_state = expected_scalars;
-      row.expected_final_bytes = expected_bytes;
-    } else if (segment.rfind("exception:", 0) == 0) {
-      auto exception_kind = Trim(segment.substr(10));
-      if (!exception_kind.empty() && ToUpper(exception_kind) != "NONE") {
-        row.expected_exception_kind = std::move(exception_kind);
-      }
-    } else if (!segment.empty()) {
-      throw std::runtime_error("unknown state row segment: " + segment);
+  const auto output_text = Trim(trimmed.substr(separator + 1));
+  if (output_text.rfind("!", 0) == 0) {
+    auto exception_kind = Trim(output_text.substr(1));
+    if (exception_kind.empty()) {
+      throw std::runtime_error("exception output is missing an exception kind: " +
+                               line);
     }
-    if (segment_pos == std::string::npos) {
-      break;
-    }
-    segment_start = segment_pos + 1;
+    row.expected_exception_kind = std::move(exception_kind);
+  } else {
+    const auto output_indices = ParseIndexList(
+        output_text, header.output_schema.size(), data_pool.size(), "output");
+    ApplySchemaValues(header.output_schema, output_indices, data_pool,
+                      expected_scalars, expected_bytes, nullptr,
+                      &row.expected_memory);
   }
 
-  if (!row.expected_final_state.has_value()) {
-    row.expected_final_state = expected_scalars;
-    row.expected_final_bytes = expected_bytes;
-  }
-
+  row.expected_final_state = expected_scalars;
+  row.expected_final_bytes = expected_bytes;
   return row;
 }
 
@@ -344,15 +417,16 @@ X86TesterParser::ParseInstructionHeaders(const std::filesystem::path &path) cons
   std::uint64_t instruction_id = 0;
   while (std::getline(input, line)) {
     ++line_number;
-    if (Trim(line).empty()) {
+    const auto trimmed = Trim(line);
+    if (trimmed.empty()) {
       continue;
     }
-    if (line.rfind("instr:", 0) != 0) {
+    if (trimmed.rfind("instr:", 0) != 0) {
       continue;
     }
 
     try {
-      const auto header = ParseHeader(line);
+      const auto header = ParseHeader(trimmed);
       ParsedInstructionHeader parsed;
       parsed.instruction_id = ++instruction_id;
       parsed.address = header.address;
@@ -377,13 +451,16 @@ X86TesterParser::ParseFile(const std::filesystem::path &path) const {
   }
 
   ParsedCorpus corpus;
+  std::vector<std::vector<std::uint8_t>> data_pool;
   std::string line;
   std::uint64_t line_number = 0;
+  std::uint64_t data_values_remaining = 0;
   std::uint64_t instruction_id = 0;
   std::uint64_t next_test_case_id = 0;
   std::uint64_t state_index = 0;
   std::uint64_t rows_in_group = 0;
   InstructionHeader current_header;
+  bool have_data_header = false;
   bool have_header = false;
 
   const auto finish_group = [&]() {
@@ -394,14 +471,32 @@ X86TesterParser::ParseFile(const std::filesystem::path &path) const {
 
   while (std::getline(input, line)) {
     ++line_number;
-    if (Trim(line).empty()) {
+    const auto trimmed = Trim(line);
+    if (trimmed.empty()) {
       continue;
     }
 
     try {
-      if (line.rfind("instr:", 0) == 0) {
+      if (!have_data_header) {
+        data_values_remaining = ParseDataHeader(trimmed);
+        have_data_header = true;
+        data_pool.reserve(static_cast<std::size_t>(data_values_remaining));
+        continue;
+      }
+
+      if (data_values_remaining != 0) {
+        data_pool.push_back(ParseDataPoolValue(trimmed));
+        --data_values_remaining;
+        continue;
+      }
+
+      if (trimmed.rfind("data:", 0) == 0) {
+        throw std::runtime_error("duplicate data pool header");
+      }
+
+      if (trimmed.rfind("instr:", 0) == 0) {
         finish_group();
-        current_header = ParseHeader(line);
+        current_header = ParseHeader(trimmed);
         have_header = true;
         state_index = 0;
         rows_in_group = 0;
@@ -411,9 +506,9 @@ X86TesterParser::ParseFile(const std::filesystem::path &path) const {
         if (!have_header) {
           throw std::runtime_error("state row appears before first header");
         }
-        corpus.rows.push_back(ParseStateRow(line, current_header,
+        corpus.rows.push_back(ParseStateRow(trimmed, current_header,
                                             instruction_id, next_test_case_id++,
-                                            state_index));
+                                            state_index, data_pool));
         ++state_index;
         ++rows_in_group;
       }
@@ -422,6 +517,16 @@ X86TesterParser::ParseFile(const std::filesystem::path &path) const {
       msg << path << ':' << line_number << ": " << e.what();
       throw std::runtime_error(msg.str());
     }
+  }
+
+  if (!have_data_header) {
+    throw std::runtime_error(path.string() + ": missing data pool header");
+  }
+  if (data_values_remaining != 0) {
+    std::ostringstream msg;
+    msg << path << ": expected " << data_values_remaining
+        << " more data pool values";
+    throw std::runtime_error(msg.str());
   }
 
   finish_group();
